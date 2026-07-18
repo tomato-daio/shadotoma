@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-tomato-50: #fff5f4;
+  --color-tomato-100: #ffe4e1;
+  --color-tomato-200: #ffc2bc;
+  --color-tomato-300: #ff9a91;
+  --color-tomato-400: #f66f63;
+  --color-tomato-500: #e0473f;
+  --color-tomato-600: #c22f28;
+  --color-tomato-700: #9c231e;
+  --color-tomato-800: #7a1c18;
+  --color-tomato-900: #5c1512;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
