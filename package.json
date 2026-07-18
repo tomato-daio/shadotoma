@@ -13,6 +13,7 @@
     "fetch-voa": "node scripts/fetch-voa.mjs"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "idb": "8.0.3",
     "react": "18.3.1",
     "react-dom": "18.3.1",

@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import type { Material } from '../../lib/db';
-import { NEXT_MATERIAL_SUGGEST_DAY } from '../../lib/practiceFlow';
 import { PlayerUI } from '../player/PlayerUI';
 import { RecorderUI } from '../recorder/RecorderUI';
 import { usePracticeWizard } from './usePracticeWizard';
 
+/** 提出後に判明した添削結果の要約。matchRateが分かれば早期提案の判定に使う。 */
+export interface SubmitOutcome {
+  matchRate?: number;
+}
+
 export interface PracticeWizardProps {
   material: Material;
   audioSrc: string;
-  onSubmit: (blob: Blob, mimeType: string) => Promise<void> | void;
+  onSubmit: (blob: Blob, mimeType: string) => Promise<SubmitOutcome | void> | SubmitOutcome | void;
   onGoToMaterials: () => void;
 }
 
@@ -27,6 +31,13 @@ export function PracticeWizard({ material, audioSrc, onSubmit, onGoToMaterials }
     setLoopCount(0);
   }, [wizard.currentStep?.key, wizard.currentIndex]);
 
+  const handleSubmit = async (blob: Blob, mimeType: string) => {
+    const outcome = await onSubmit(blob, mimeType);
+    if (outcome && typeof outcome.matchRate === 'number') {
+      wizard.applyLatestMatchRate(outcome.matchRate);
+    }
+  };
+
   if (wizard.loading) {
     return <p className="p-4 text-center text-sm text-neutral-400">読み込み中…</p>;
   }
@@ -42,7 +53,7 @@ export function PracticeWizard({ material, audioSrc, onSubmit, onGoToMaterials }
   }
 
   if (wizard.finished) {
-    if (wizard.dayNumber >= NEXT_MATERIAL_SUGGEST_DAY) {
+    if (wizard.nextMaterialEligible) {
       return (
         <NextMaterialSuggestion
           dayNumber={wizard.dayNumber}
@@ -105,7 +116,7 @@ export function PracticeWizard({ material, audioSrc, onSubmit, onGoToMaterials }
           onLoopCountChange={setLoopCount}
         />
       ) : (
-        <RecorderUI referenceSrc={audioSrc} onSubmit={onSubmit} />
+        <RecorderUI referenceSrc={audioSrc} onSubmit={handleSubmit} />
       )}
 
       <div className="flex gap-2">

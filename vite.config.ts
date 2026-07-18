@@ -37,7 +37,26 @@ export default defineConfig(({ command }) => ({
         ],
       },
       workbox: {
+        // mp3はサイズが大きく初回ビルド時のプリキャッシュには含めない（M2申し送り事項）。
+        // 代わりにruntimeCachingで「一度再生した教材はオフラインでも聴ける」を実現する。
         globPatterns: ['**/*.{js,css,html,svg,png,ico,json}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.endsWith('.mp3'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'shadotoma-material-audio',
+              expiration: {
+                // VOA教材は最大30件程度を想定。上限を超えたら古いものから破棄する。
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 180,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
     }),
   ],

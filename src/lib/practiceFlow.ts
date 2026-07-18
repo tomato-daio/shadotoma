@@ -92,17 +92,27 @@ export function computeDayNumber(daysPracticed: string[], today: string): number
  * - 2日目以降: シャドーイング → 録音・提出
  *
  * 4日目を超えても同じ構成を返す（「このまま続ける」を選んだ場合の継続練習用フォールバック）。
- * matchRate>=0.85での早期提案（DESIGN.md §4）はM3のjudge実装後に追加する（M2時点では
- * JudgeResultが存在しないため未実装。日数条件のみ判定する）。
  */
 export function getWizardSteps(dayNumber: number): WizardStepConfig[] {
   if (dayNumber <= 1) return DAY1_STEPS;
   return DAY2_4_STEPS;
 }
 
-/** その日数に到達したら「次の教材へ」を提案すべきかどうか。 */
-export function shouldSuggestNextMaterial(dayNumber: number): boolean {
-  return dayNumber >= NEXT_MATERIAL_SUGGEST_DAY;
+/** matchRateがこの値以上なら、日数に関わらず「次の教材へ」を早期提案する（DESIGN.md §4）。 */
+export const NEXT_MATERIAL_SUGGEST_MATCH_RATE = 0.85;
+
+/**
+ * 「次の教材へ」を提案すべきかどうか（マンネリ防止、DESIGN.md §4）。
+ * - 4日目に到達した場合（日数条件。既存仕様）
+ * - または、直近の提出のmatchRateが0.85以上の場合（早期提案。M3で追加）
+ *
+ * `latestMatchRate` は直近の提出（同一教材内で最新のjudge結果）のmatchRateを渡す。
+ * まだ添削結果が無い場合はundefinedを渡せば日数条件のみで判定する。
+ */
+export function shouldSuggestNextMaterial(dayNumber: number, latestMatchRate?: number): boolean {
+  if (dayNumber >= NEXT_MATERIAL_SUGGEST_DAY) return true;
+  if (latestMatchRate !== undefined && latestMatchRate >= NEXT_MATERIAL_SUGGEST_MATCH_RATE) return true;
+  return false;
 }
 
 /** 日付文字列("YYYY-MM-DD")配列から最新の日付を返す。空配列なら空文字列。 */

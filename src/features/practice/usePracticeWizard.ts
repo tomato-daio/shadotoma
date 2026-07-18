@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { addSession, getMaterialProgress, newId, touchMaterialProgress, type MaterialProgress } from '../../lib/db';
+import {
+  addSession,
+  getMaterialProgress,
+  getSubmissionsByMaterial,
+  newId,
+  touchMaterialProgress,
+  type MaterialProgress,
+} from '../../lib/db';
 import { learningDate } from '../../lib/dates';
 import { computeDayNumber, getWizardSteps, shouldSuggestNextMaterial, type WizardStepConfig } from '../../lib/practiceFlow';
 
@@ -12,8 +19,13 @@ export interface UsePracticeWizardResult {
   currentStep: WizardStepConfig | null;
   /** そのステップまで一通り終えた状態か。 */
   finished: boolean;
-  /** 「次の教材へ」を提案する画面を表示すべきか（4日目以降かつ、まだ「続ける」を選んでいない）。 */
+  /** 「次の教材へ」を提案する画面を表示すべきか（ステップ開始前。4日目以降かつ、まだ「続ける」を選んでいない）。 */
   suggestNext: boolean;
+  /**
+   * 「次の教材へ」提案の対象条件を満たしているか（finished状態に関わらず判定）。
+   * 4日目到達、またはmatchRate>=0.85（DESIGN.md §4）。ステップ完了直後の画面分岐に使う。
+   */
+  nextMaterialEligible: boolean;
   /** 現在のステップを完了として記録し、次のステップへ進む（最終ステップならfinished=trueにする）。 */
   completeCurrentStep: (loops: number) => Promise<void>;
   /** 1つ前のステップへ戻る（記録はしない。自由な戻りのため）。 */
@@ -22,6 +34,8 @@ export interface UsePracticeWizardResult {
   goToIndex: (index: number) => void;
   /** 4日目以降の提案を無視してこのまま続ける場合に呼ぶ。 */
   continueAnyway: () => void;
+  /** 添削結果のmatchRateが判明した時点で呼び、早期提案の判定に反映する。 */
+  applyLatestMatchRate: (matchRate: number) => void;
 }
 
 /**
@@ -35,6 +49,10 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
   const [currentIndex, setCurrentIndex] = useState(0);
   const [finished, setFinished] = useState(false);
   const [forceContinue, setForceContinue] = useState(false);
+  // このセッション開始時点でのmatchRate（固定値。ステップ開始前ゲートに使う）。
+  const [mountMatchRate, setMountMatchRate] = useState<number | undefined>(undefined);
+  // 現在時点でのmatchRate（今回の提出で更新されうる。完了後ゲートに使う）。
+  const [latestMatchRate, setLatestMatchRate] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!materialId) return;
@@ -43,12 +61,21 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
     setCurrentIndex(0);
     setFinished(false);
     setForceContinue(false);
-    void getMaterialProgress(materialId).then((p) => {
-      if (!cancelled) {
+    setMountMatchRate(undefined);
+    setLatestMatchRate(undefined);
+    void Promise.all([getMaterialProgress(materialId), getSubmissionsByMaterial(materialId)]).then(
+      ([p, submissions]) => {
+        if (cancelled) return;
         setProgress(p);
+        // getSubmissionsByMaterialは新しい順。judge結果を持つ直近の提出のmatchRateを初期値にする
+        // （前回セッションで既に0.85以上だった場合も早期提案の判定に反映するため）。
+        const latestJudged = submissions.find((s) => s.judge);
+        const rate = latestJudged?.judge?.matchRate;
+        setMountMatchRate(rate);
+        setLatestMatchRate(rate);
         setLoading(false);
-      }
-    });
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -58,7 +85,11 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
   const dayNumber = computeDayNumber(progress?.daysPracticed ?? [], today);
   const steps = getWizardSteps(dayNumber);
   const currentStep = steps[currentIndex] ?? null;
-  const suggestNext = !forceContinue && !finished && shouldSuggestNextMaterial(dayNumber);
+  // ステップ開始前ゲート: セッション開始時点のmatchRateで判定する（今回の提出結果でいきなり
+  // ステップ画面が差し替わらないよう、finished前は固定値を見る）。
+  const suggestNext = !forceContinue && !finished && shouldSuggestNextMaterial(dayNumber, mountMatchRate);
+  // 完了後ゲート: 今回の提出結果（applyLatestMatchRate）も反映した最新値で判定する。
+  const nextMaterialEligible = !forceContinue && shouldSuggestNextMaterial(dayNumber, latestMatchRate);
 
   const completeCurrentStep = useCallback(
     async (loops: number) => {
@@ -99,6 +130,10 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
     setForceContinue(true);
   }, []);
 
+  const applyLatestMatchRate = useCallback((matchRate: number) => {
+    setLatestMatchRate(matchRate);
+  }, []);
+
   return {
     loading,
     dayNumber,
@@ -107,9 +142,11 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
     currentStep,
     finished,
     suggestNext,
+    nextMaterialEligible,
     completeCurrentStep,
     goBack,
     goToIndex,
     continueAnyway,
+    applyLatestMatchRate,
   };
 }

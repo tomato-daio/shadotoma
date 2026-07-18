@@ -4,6 +4,7 @@ import {
   getWizardSteps,
   latestDate,
   NEXT_MATERIAL_SUGGEST_DAY,
+  NEXT_MATERIAL_SUGGEST_MATCH_RATE,
   shouldSuggestNextMaterial,
 } from './practiceFlow';
 
@@ -49,7 +50,7 @@ describe('getWizardSteps', () => {
 });
 
 describe('shouldSuggestNextMaterial', () => {
-  it('4日目未満は提案しない', () => {
+  it('4日目未満・matchRate未指定なら提案しない', () => {
     expect(shouldSuggestNextMaterial(1)).toBe(false);
     expect(shouldSuggestNextMaterial(3)).toBe(false);
   });
@@ -57,6 +58,20 @@ describe('shouldSuggestNextMaterial', () => {
   it('4日目以降は提案する', () => {
     expect(shouldSuggestNextMaterial(NEXT_MATERIAL_SUGGEST_DAY)).toBe(true);
     expect(shouldSuggestNextMaterial(5)).toBe(true);
+  });
+
+  it('4日目未満でもmatchRateが0.85以上なら早期提案する', () => {
+    expect(shouldSuggestNextMaterial(2, NEXT_MATERIAL_SUGGEST_MATCH_RATE)).toBe(true);
+    expect(shouldSuggestNextMaterial(1, 0.9)).toBe(true);
+  });
+
+  it('4日目未満でmatchRateが0.85未満なら提案しない', () => {
+    expect(shouldSuggestNextMaterial(2, 0.84)).toBe(false);
+    expect(shouldSuggestNextMaterial(1, 0)).toBe(false);
+  });
+
+  it('4日目以降ならmatchRateが低くても提案する（日数条件が優先）', () => {
+    expect(shouldSuggestNextMaterial(NEXT_MATERIAL_SUGGEST_DAY, 0.1)).toBe(true);
   });
 });
 

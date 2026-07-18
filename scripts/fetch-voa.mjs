@@ -8,6 +8,7 @@
  * 使い方:
  *   npm run fetch-voa -- --level 1 --count 5
  *   node scripts/fetch-voa.mjs --level 2 --count 3
+ *   node scripts/fetch-voa.mjs --refresh   （既存教材の本文だけ再取得して再生成。音声は再取得しない）
  *
  * 依存: Node標準機能のみ（fetch, fs/promises）。HTMLパースは正規表現/文字列処理で行う。
  *
@@ -17,6 +18,10 @@
  * - 記事本文: `id="article-content"` の位置から、最初の `<h2` タグが現れる直前までを
  *   トランスクリプト領域とみなし、その範囲内の `<p>...</p>` を本文として抽出する。
  *   "Words in This Story"（語注）や埋め込みクイズは最初の`<h2`より後ろにあるため自然に除外される。
+ * - 記事中の小見出し（例: `<p><strong>Adventurer stranded for 3 days by storm</strong></p>`）は
+ *   独立した短い`<p>`として本文中に挿入されており、文末句読点を持たない。これを段落として
+ *   そのまま本文に混ぜると、文分割時に隣の文へ吸着してしまう（句読点がないため文区切りと
+ *   認識されない）ため、`looksLikeHeading()` で段落抽出の時点（文分割・結合の前）に除外する。
  * - 音声URL: `<audio src="....mp3" ...>` の最初の一致（64kbps版）を採用する。
  * - 署名・定型文（"I'm John Russell." 等）は文分割後にパターンマッチで除去する（本文中に
  *   `<br/>`区切りで埋め込まれているケースがあるため、段落単位ではなく文単位でフィルタする）。
@@ -56,12 +61,14 @@ const LEVEL_SECTIONS = {
 };
 
 function parseArgs(argv) {
-  const args = { level: 1, count: 5 };
+  const args = { level: 1, count: 5, refresh: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--level') {
       args.level = Number(argv[++i]);
     } else if (argv[i] === '--count') {
       args.count = Number(argv[++i]);
+    } else if (argv[i] === '--refresh') {
+      args.refresh = true;
     }
   }
   return args;
@@ -134,12 +141,33 @@ function extractAudioUrl(html) {
 }
 
 /**
+ * 段落が記事中の小見出し（例: "Adventurer stranded for 3 days by storm"）かどうかを判定する。
+ *
+ * VOAの記事本文には、通常の地の文の段落に混じって`<p><strong>見出し</strong></p>`という
+ * 形の短い小見出しが独立した段落として挿入されている。これは音声では読まれないため、
+ * そのままスクリプトに含めると添削精度を落とす（申し送り事項の修正対象）。
+ *
+ * ヒューリスティック: 60文字未満 かつ 文末句読点(`.` `!` `?`。閉じ引用符が続く場合は許容)を
+ * 持たない段落を小見出しとみなす。地の文の段落はほぼ必ず文の区切りである句読点で終わるため、
+ * この2条件を両方満たすケースは実質的に小見出しか区切り線のような非本文段落のみになる。
+ */
+const HEADING_MAX_LENGTH = 60;
+
+function looksLikeHeading(paragraph) {
+  const trimmed = paragraph.trim();
+  if (trimmed.length === 0 || trimmed.length >= HEADING_MAX_LENGTH) return false;
+  // 文末の閉じ引用符（ストレート/カーリー）を取り除いてから終端句読点の有無を見る。
+  const withoutTrailingQuotes = trimmed.replace(/["'”’]+$/, '');
+  return !/[.!?]$/.test(withoutTrailingQuotes);
+}
+
+/**
  * 記事本文の段落テキスト配列を返す。
  * `id="article-content"` から最初の `<h2` 直前までを対象に、属性なしの `<p>` のみを本文として
  * 抽出する。VOAのテンプレートでは音声プレイヤーの状態表示（`<p class="ta-c">No media source
  * currently available</p>` 等）やUIボタンは必ずclass属性付きの`<p>`で、地の文の段落は常に
  * 属性なしの`<p>`であるため、`<p>`（属性なし）に限定することでプレイヤーUI文言の混入を防ぐ。
- * 区切り線のみの段落（"____...") は除外する。
+ * 区切り線のみの段落（"____...") と、小見出しとみなせる段落（`looksLikeHeading`）は除外する。
  */
 function extractArticleParagraphs(html) {
   const startIdx = html.indexOf('id="article-content"');
@@ -150,7 +178,8 @@ function extractArticleParagraphs(html) {
 
   const paragraphs = [...transcriptHtml.matchAll(/<p>([\s\S]*?)<\/p>/gi)]
     .map((m) => htmlToText(m[1]))
-    .filter((p) => p.length > 0 && !/^_+$/.test(p));
+    .filter((p) => p.length > 0 && !/^_+$/.test(p))
+    .filter((p) => !looksLikeHeading(p));
 
   return paragraphs;
 }
@@ -203,13 +232,74 @@ function countWords(text) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-async function main() {
-  const { level, count } = parseArgs(process.argv.slice(2));
-  const section = LEVEL_SECTIONS[level];
-  if (!section || !Number.isFinite(count) || count <= 0) {
-    console.error('使い方: node scripts/fetch-voa.mjs --level <1|2|3> --count <件数>');
-    process.exit(1);
+/**
+ * 既存教材（source: 'voa'）の本文（sentences/wordCount）だけを再取得・再生成する。
+ * 音声mp3は再取得しない。教材idは変えない（articleIdFromLinkが返すidは記事URL末尾の
+ * 数値なので、記事URLが見つかれば同じidに一致する）。
+ *
+ * 各レベルのセクション一覧ページを1回ずつクロールしてid→記事リンクの対応表を作り、
+ * 既存教材のidがその中に見つかった場合のみ本文を再取得して差し替える。セクション一覧に
+ * もう載っていない古い記事は再取得できないため、その教材はスキップして警告を出す
+ * （既存のsentencesはそのまま維持される）。
+ */
+async function refreshExisting(index) {
+  console.log('既存教材の本文を再取得し、小見出し除去などの最新ロジックで再生成します...');
+
+  const linkById = new Map();
+  for (const section of Object.values(LEVEL_SECTIONS)) {
+    const sectionHtml = await fetchText(`${BASE_URL}${section.sectionPath}`);
+    for (const link of extractArticleLinks(sectionHtml)) {
+      const id = articleIdFromLink(link);
+      if (id && !linkById.has(id)) {
+        linkById.set(id, link);
+      }
+    }
+    await sleep(REQUEST_INTERVAL_MS);
   }
+
+  let updated = 0;
+  for (const material of index) {
+    if (material.source !== 'voa') continue;
+
+    const link = linkById.get(material.id);
+    if (!link) {
+      console.warn(`  skip (一覧ページに見つからず再取得不可): ${material.id}`);
+      continue;
+    }
+
+    const articleUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
+    try {
+      await sleep(REQUEST_INTERVAL_MS);
+      const articleHtml = await fetchText(articleUrl);
+      const paragraphs = extractArticleParagraphs(articleHtml);
+      if (!paragraphs || paragraphs.length === 0) {
+        console.warn(`  skip (本文を抽出できない): ${material.id}`);
+        continue;
+      }
+
+      const bodyText = paragraphs.join(' ');
+      const rawSentences = sentencesFromText(bodyText).map((s) => s.en);
+      const sentences = stripBoilerplateSentences(rawSentences).map((en) => ({ en }));
+      if (sentences.length === 0) {
+        console.warn(`  skip (本文抽出0文): ${material.id}`);
+        continue;
+      }
+
+      const wordCount = sentences.reduce((sum, s) => sum + countWords(s.en), 0);
+      material.sentences = sentences;
+      material.wordCount = wordCount;
+      updated++;
+      console.log(`  更新: [${material.id}] ${sentences.length}文 / ${wordCount}語`);
+    } catch (err) {
+      console.warn(`  エラー(スキップ): ${material.id} — ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  console.log(`再取得完了: ${updated}/${index.filter((m) => m.source === 'voa').length}件を更新。`);
+}
+
+async function main() {
+  const { level, count, refresh } = parseArgs(process.argv.slice(2));
 
   await mkdir(AUDIO_DIR, { recursive: true });
 
@@ -218,6 +308,22 @@ async function main() {
   if (existsSync(INDEX_PATH)) {
     index = JSON.parse(await readFile(INDEX_PATH, 'utf-8'));
   }
+
+  if (refresh) {
+    await refreshExisting(index);
+    await writeFile(INDEX_PATH, `${JSON.stringify(index, null, 2)}\n`, 'utf-8');
+    console.log('index.json を再生成しました。');
+    return;
+  }
+
+  const section = LEVEL_SECTIONS[level];
+  if (!section || !Number.isFinite(count) || count <= 0) {
+    console.error(
+      '使い方: node scripts/fetch-voa.mjs --level <1|2|3> --count <件数> | node scripts/fetch-voa.mjs --refresh',
+    );
+    process.exit(1);
+  }
+
   const existingIds = new Set(index.map((m) => m.id));
 
   console.log(`VOA level ${level}（${section.category}）から最大${count}件取得します...`);

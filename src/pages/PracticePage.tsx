@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { PracticeWizard } from '../features/practice/PracticeWizard';
+import { buildFallbackPrompt, copyTextToClipboard } from '../features/judge/clipboardFallback';
+import { runJudge } from '../features/judge/runJudge';
+import { SubmissionResultPanel, type JudgeRunStatus } from '../features/judge/SubmissionResultPanel';
+import { PracticeWizard, type SubmitOutcome } from '../features/practice/PracticeWizard';
 import { SubmissionHistory } from '../features/recorder/SubmissionHistory';
-import { addSubmission, getMaterial, newId, type Material } from '../lib/db';
+import { loadAudioDuration } from '../lib/audio';
+import { addSubmission, getMaterial, getSubmissionsByMaterial, newId, type JudgeResult, type Material } from '../lib/db';
 import { learningDate } from '../lib/dates';
 
 export function PracticePage() {
@@ -12,10 +16,23 @@ export function PracticePage() {
   const [material, setMaterial] = useState<Material | null | undefined>(undefined);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const [judgeStatus, setJudgeStatus] = useState<JudgeRunStatus>('idle');
+  const [judgeProgress, setJudgeProgress] = useState<number | null>(null);
+  const [judgeError, setJudgeError] = useState<string | null>(null);
+  const [lastJudge, setLastJudge] = useState<JudgeResult | null>(null);
+  const [previousMatchRate, setPreviousMatchRate] = useState<number | undefined>(undefined);
+  const [fallbackCopied, setFallbackCopied] = useState(false);
+  const [fallbackSituation, setFallbackSituation] = useState('');
+
   useEffect(() => {
     if (!materialId) return;
     let cancelled = false;
     setMaterial(undefined);
+    setJudgeStatus('idle');
+    setJudgeProgress(null);
+    setJudgeError(null);
+    setLastJudge(null);
+    setFallbackCopied(false);
     void getMaterial(materialId).then((m) => {
       if (!cancelled) setMaterial(m ?? null);
     });
@@ -62,16 +79,66 @@ export function PracticePage() {
     );
   }
 
-  const handleSubmit = async (blob: Blob, mimeType: string) => {
-    await addSubmission({
-      id: newId('sub'),
-      materialId,
-      date: learningDate(new Date()),
-      audioBlob: blob,
-      mimeType,
-      createdAt: Date.now(),
+  /**
+   * 提出フロー（DESIGN.md §8手順4・M3申し送り事項）:
+   * RecorderUIの「提出」→ 添削実行(runJudge) → Submissionにtranscript/judgeを保存 → 結果画面表示。
+   * モデルDL/実行に失敗した場合は添削なしでSubmissionだけ保存し、フォールバックUIへ切り替える。
+   */
+  const handleSubmit = async (blob: Blob, mimeType: string): Promise<SubmitOutcome | void> => {
+    const id = newId('sub');
+    const date = learningDate(new Date());
+    setJudgeStatus('model-download');
+    setJudgeProgress(null);
+    setJudgeError(null);
+    setLastJudge(null);
+    setFallbackCopied(false);
+
+    try {
+      const [previousSubs, recordingDurationSec] = await Promise.all([
+        getSubmissionsByMaterial(materialId),
+        loadAudioDuration(blob),
+      ]);
+      const prevMatchRate = previousSubs.find((s) => s.judge)?.judge?.matchRate;
+      setPreviousMatchRate(prevMatchRate);
+
+      const { transcript, judge } = await runJudge({
+        audioBlob: blob,
+        sentences: material!.sentences,
+        recordingDurationSec,
+        referenceDurationSec: material!.durationSec,
+        previousMatchRate: prevMatchRate,
+        onProgress: (event) => {
+          setJudgeStatus(event.phase);
+          setJudgeProgress(event.progress ?? null);
+        },
+      });
+
+      await addSubmission({ id, materialId, date, audioBlob: blob, mimeType, transcript, judge, createdAt: Date.now() });
+      setLastJudge(judge);
+      setJudgeStatus('done');
+      setRefreshKey((k) => k + 1);
+      return { matchRate: judge.matchRate };
+    } catch (err) {
+      // 失敗時フォールバック: 添削なしで録音だけは保存する（DESIGN.md §8手順6）
+      const message = err instanceof Error ? err.message : String(err);
+      await addSubmission({ id, materialId, date, audioBlob: blob, mimeType, createdAt: Date.now() });
+      setJudgeError(message);
+      setJudgeStatus('error');
+      setFallbackSituation(`Whisperによる添削の自動実行に失敗しました（${message}）。録音は保存済みです。`);
+      setRefreshKey((k) => k + 1);
+      return undefined;
+    }
+  };
+
+  const handleCopyFallback = async () => {
+    if (!material) return;
+    const prompt = buildFallbackPrompt({
+      materialTitle: material.title,
+      sentences: material.sentences,
+      situation: fallbackSituation || '添削の自動実行に失敗しました。',
     });
-    setRefreshKey((k) => k + 1);
+    const ok = await copyTextToClipboard(prompt);
+    setFallbackCopied(ok);
   };
 
   return (
@@ -97,6 +164,16 @@ export function PracticePage() {
       ) : (
         <p className="text-sm text-red-600">音声を読み込めませんでした</p>
       )}
+
+      <SubmissionResultPanel
+        status={judgeStatus}
+        progress={judgeProgress}
+        error={judgeError}
+        judge={lastJudge}
+        previousMatchRate={previousMatchRate}
+        onCopyFallback={() => void handleCopyFallback()}
+        fallbackCopied={fallbackCopied}
+      />
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium text-neutral-700">提出履歴</p>
