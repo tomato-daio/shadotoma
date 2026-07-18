@@ -5,14 +5,18 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/shadotoma/' : '/',
+// base: `vite preview`（command==='build'だがmode==='production'ではない）でも本番同様に
+// '/shadotoma/'を使わせるため、command ではなく mode（development/production）で分岐する。
+// これにより `npm run build && npm run preview` でもGitHub Pagesと同じbaseで配信され、
+// アセットの404（白画面）を防げる。
+export default defineConfig(({ mode }) => ({
+  base: mode === 'development' ? '/' : '/shadotoma/',
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
         name: 'シャドとま',
         short_name: 'シャドとま',
@@ -33,6 +37,21 @@ export default defineConfig(({ command }) => ({
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'maskable',
+          },
+          {
+            src: 'pwa-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: 'pwa-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: 'apple-touch-icon.png',
+            sizes: '180x180',
+            type: 'image/png',
           },
         ],
       },

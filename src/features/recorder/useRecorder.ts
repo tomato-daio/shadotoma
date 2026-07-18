@@ -38,6 +38,8 @@ export function useRecorder(): UseRecorderResult {
   const rafRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  /** trueの間はアンマウント済み。await後の副作用開始をここで打ち切る。 */
+  const disposedRef = useRef(false);
 
   const cleanupStream = useCallback(() => {
     if (rafRef.current !== null) {
@@ -57,7 +59,13 @@ export function useRecorder(): UseRecorderResult {
     analyserRef.current = null;
   }, []);
 
-  useEffect(() => cleanupStream, [cleanupStream]);
+  useEffect(() => {
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+      cleanupStream();
+    };
+  }, [cleanupStream]);
 
   const monitorLevel = useCallback(() => {
     const analyser = analyserRef.current;
@@ -84,6 +92,11 @@ export function useRecorder(): UseRecorderResult {
     chunksRef.current = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (disposedRef.current) {
+        // getUserMedia待ち中にアンマウントされた。取得済みストリームを即座に解放して中断する。
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
 
       const selectedMimeType = pickRecorderMimeType();

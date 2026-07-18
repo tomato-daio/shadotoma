@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   addSession,
   getMaterialProgress,
@@ -28,6 +28,8 @@ export interface UsePracticeWizardResult {
   nextMaterialEligible: boolean;
   /** 現在のステップを完了として記録し、次のステップへ進む（最終ステップならfinished=trueにする）。 */
   completeCurrentStep: (loops: number) => Promise<void>;
+  /** completeCurrentStepが実行中（IndexedDB書き込み待ち）か。多重クリック防止のボタン無効化に使う。 */
+  completing: boolean;
   /** 1つ前のステップへ戻る（記録はしない。自由な戻りのため）。 */
   goBack: () => void;
   /** 任意のステップへジャンプする（記録はしない。自由なスキップのため）。 */
@@ -53,6 +55,9 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
   const [mountMatchRate, setMountMatchRate] = useState<number | undefined>(undefined);
   // 現在時点でのmatchRate（今回の提出で更新されうる。完了後ゲートに使う）。
   const [latestMatchRate, setLatestMatchRate] = useState<number | undefined>(undefined);
+  const [completing, setCompleting] = useState(false);
+  // completeCurrentStepの多重実行防止用（stateの更新は非同期なため、同期的に判定できるrefを併用する）。
+  const completingRef = useRef(false);
 
   useEffect(() => {
     if (!materialId) return;
@@ -94,23 +99,32 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
   const completeCurrentStep = useCallback(
     async (loops: number) => {
       if (!materialId || !currentStep) return;
-      await addSession({
-        id: newId('session'),
-        materialId,
-        date: today,
-        step: currentStep.step,
-        loops,
-        startedAt: Date.now(),
-      });
-      const nextProgress = await touchMaterialProgress(materialId, today, currentStep.step, loops);
-      setProgress(nextProgress);
-      setCurrentIndex((i) => {
-        if (i + 1 >= steps.length) {
-          setFinished(true);
-          return i;
-        }
-        return i + 1;
-      });
+      // 連打・二重タップでの多重実行を防ぐ（in-flight中の再入は無視する）。
+      if (completingRef.current) return;
+      completingRef.current = true;
+      setCompleting(true);
+      try {
+        await addSession({
+          id: newId('session'),
+          materialId,
+          date: today,
+          step: currentStep.step,
+          loops,
+          startedAt: Date.now(),
+        });
+        const nextProgress = await touchMaterialProgress(materialId, today, currentStep.step, loops);
+        setProgress(nextProgress);
+        setCurrentIndex((i) => {
+          if (i + 1 >= steps.length) {
+            setFinished(true);
+            return i;
+          }
+          return i + 1;
+        });
+      } finally {
+        completingRef.current = false;
+        setCompleting(false);
+      }
     },
     [materialId, currentStep, today, steps.length],
   );
@@ -144,6 +158,7 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
     suggestNext,
     nextMaterialEligible,
     completeCurrentStep,
+    completing,
     goBack,
     goToIndex,
     continueAnyway,

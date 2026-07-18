@@ -131,9 +131,10 @@ export function PracticeWizard({ material, audioSrc, onSubmit, onGoToMaterials }
         <button
           type="button"
           onClick={() => void wizard.completeCurrentStep(step.kind === 'player' ? loopCount : 0)}
-          className="flex-1 rounded-md bg-tomato-500 px-3 py-2 text-sm font-semibold text-white active:bg-tomato-600"
+          disabled={wizard.completing}
+          className="flex-1 rounded-md bg-tomato-500 px-3 py-2 text-sm font-semibold text-white active:bg-tomato-600 disabled:opacity-50"
         >
-          {isLastStep ? '完了' : '次へ'}
+          {wizard.completing ? '処理中…' : isLastStep ? '完了' : '次へ'}
         </button>
       </div>
     </div>

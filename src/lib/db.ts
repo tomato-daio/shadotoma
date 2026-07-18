@@ -223,6 +223,10 @@ export async function getAllMaterialProgress(): Promise<MaterialProgress[]> {
 /**
  * 練習セッション実施時にmaterialProgressを更新する（無ければ新規作成）。
  * daysPracticedはユニークな日付のみ保持し、loopsは加算する。
+ *
+ * get→putを単一のreadwriteトランザクション内で行うことで、同一materialIdに対する
+ * 呼び出しが同時に走ってもロストアップデート（片方の加算が消える）を起こさないようにする。
+ * IndexedDBは同一storeに対するreadwriteトランザクションを直列化するため、これでアトミックになる。
  */
 export async function touchMaterialProgress(
   materialId: string,
@@ -230,7 +234,9 @@ export async function touchMaterialProgress(
   step: PracticeStep,
   loopsDelta = 0,
 ): Promise<MaterialProgress> {
-  const existing = await getMaterialProgress(materialId);
+  const db = await getDB();
+  const tx = db.transaction('materialProgress', 'readwrite');
+  const existing = await tx.store.get(materialId);
   const daysPracticed = existing ? [...existing.daysPracticed] : [];
   if (!daysPracticed.includes(date)) {
     daysPracticed.push(date);
@@ -242,7 +248,8 @@ export async function touchMaterialProgress(
     lastStep: step,
     status: daysPracticed.length > 0 ? 'active' : 'not-started',
   };
-  await putMaterialProgress(next);
+  await tx.store.put(next);
+  await tx.done;
   return next;
 }
 

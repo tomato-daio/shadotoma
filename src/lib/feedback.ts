@@ -39,6 +39,10 @@ const DEV_POINTS_COUNT = 3;
 const WPM_TOLERANCE_RATIO = 0.15;
 /** 最長連続一致区間として言及に値する最小語数。 */
 const NOTABLE_STREAK_MIN_LENGTH = 4;
+/** 「挿入語ゼロ」を褒める条件として要求する最低一致率（全語missedのような空認識で誤って褒めないため）。 */
+const NO_INSERTION_PRAISE_MIN_MATCH_RATE = 0.3;
+/** 認識語数（ok+sub+insertions）がスクリプト語数に対してこの割合を下回ったら「ほぼ認識できていない」とみなす。 */
+const LOW_RECOGNITION_RATIO = 0.15;
 
 /** wordMarksからmatchRate（0-1、スクリプト語のうち言えた割合）を計算する。 */
 export function computeMatchRate(wordMarks: WordMark[]): number {
@@ -144,9 +148,19 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   const { wordMarks, sentences, wpm, referenceWpm, previousMatchRate } = input;
   const matchRate = computeMatchRate(wordMarks);
   const matchRatePercent = Math.round(matchRate * 100);
+  const matchedCount = wordMarks.filter((w) => w.status === 'ok').length;
+  const subCount = wordMarks.filter((w) => w.status === 'sub').length;
+  const insertionsCount = input.insertions?.length ?? 0;
+  // Whisperが実際に認識した語数の目安（スクリプトに対応した語 + 対応しない挿入語）。
+  const recognizedWordCount = matchedCount + subCount + insertionsCount;
 
   const goodCandidates: string[] = [];
   const devCandidates: string[] = [];
+
+  // 認識語がほぼ無い（空認識・雑音のみ等）場合は、他の指摘より優先して原因の心当たりを案内する。
+  if (wordMarks.length > 0 && recognizedWordCount / wordMarks.length < LOW_RECOGNITION_RATIO) {
+    devCandidates.push('音声がほとんど認識できませんでした。マイク位置とイヤホン使用を確認してください。');
+  }
 
   // --- Good Points ---
 
@@ -179,7 +193,7 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
     goodCandidates.push(`一致率${matchRatePercent}%で、スクリプトの半分以上をしっかり発話できていました。`);
   }
 
-  if (wordMarks.length > 0 && (input.insertions?.length ?? 0) === 0) {
+  if (matchedCount > 0 && matchRate >= NO_INSERTION_PRAISE_MIN_MATCH_RATE && insertionsCount === 0) {
     goodCandidates.push('スクリプトに無い言葉を付け足すことなく、原文に忠実に発話できていました。');
   }
 
@@ -205,7 +219,6 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
     }
   }
 
-  const subCount = wordMarks.filter((w) => w.status === 'sub').length;
   if (subCount > 0) {
     devCandidates.push(
       `${subCount}箇所で、スクリプトと異なる語として認識されました。発音や語順を意識して聴き直してみましょう。`,

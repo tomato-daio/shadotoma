@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatTime } from '../../lib/audio';
 import { useRecorder } from './useRecorder';
 
@@ -17,22 +17,18 @@ export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderU
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const ownObjectUrlRef = useRef<string | null>(null);
 
-  const ownUrl = recorder.recordedBlob ? URL.createObjectURL(recorder.recordedBlob) : null;
+  // recordedBlobが変わったときだけ生成する（毎レンダーで生成するとrevokeされずリークする）。
+  const ownUrl = useMemo(
+    () => (recorder.recordedBlob ? URL.createObjectURL(recorder.recordedBlob) : null),
+    [recorder.recordedBlob],
+  );
 
   useEffect(() => {
-    if (ownObjectUrlRef.current) {
-      URL.revokeObjectURL(ownObjectUrlRef.current);
-    }
-    ownObjectUrlRef.current = ownUrl;
     return () => {
-      if (ownObjectUrlRef.current) {
-        URL.revokeObjectURL(ownObjectUrlRef.current);
-        ownObjectUrlRef.current = null;
-      }
+      if (ownUrl) URL.revokeObjectURL(ownUrl);
     };
-  }, [recorder.recordedBlob]);
+  }, [ownUrl]);
 
   const playCompare = (target: CompareTarget) => {
     setCompareTarget(target);

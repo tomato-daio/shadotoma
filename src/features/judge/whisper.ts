@@ -3,7 +3,7 @@
  * （DESIGN.md §8手順2）。
  *
  * - モデル: `onnx-community/whisper-tiny.en`（量子化版）
- * - デバイス: WebGPUが使えればWebGPU、無ければWASMにフォールバック
+ * - デバイス: 常にWASM（下記コメント参照）
  * - モデルは初回ダウンロード後、transformers.jsが内部でCache APIへキャッシュするため、
  *   2回目以降はネットワークアクセスなしで読み込める
  *
@@ -28,11 +28,6 @@ export type WhisperProgressCallback = (event: WhisperProgressEvent) => void;
 
 let cachedPipelinePromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
 
-/** WebGPUが利用可能かどうか。transformers.jsのenv.backendsから判定する。 */
-function isWebGpuAvailable(): boolean {
-  return typeof navigator !== 'undefined' && 'gpu' in navigator;
-}
-
 function toProgressEvent(info: ProgressInfo): WhisperProgressEvent | null {
   if (info.status === 'progress' && 'progress' in info && typeof info.progress === 'number') {
     // transformers.jsのprogressは0-100（%）。UI側は0-1で扱う。
@@ -47,9 +42,14 @@ function toProgressEvent(info: ProgressInfo): WhisperProgressEvent | null {
  */
 async function getPipeline(onProgress?: WhisperProgressCallback): Promise<AutomaticSpeechRecognitionPipeline> {
   if (!cachedPipelinePromise) {
-    const device = isWebGpuAvailable() ? 'webgpu' : 'wasm';
+    // device判定は行わず常に'wasm'+'q8'を使う。
+    // WebGPU選択時もdtype:'q8'固定になってしまい、onnxruntime-webのWebGPU実行プロバイダには
+    // int8量子化カーネル（MatMulInteger等）が実装されていないため、webgpuデバイスは
+    // モデル構築・推論が失敗し続ける（wasmへの自動フォールバックも存在しない）。
+    // 将来WebGPUを使う場合は、量子化なし（dtype:'fp32'）またはfp16版モデルとセットで
+    // 別途対応すること（q8のままdeviceだけwebgpuに変えても動かない）。
     cachedPipelinePromise = pipeline('automatic-speech-recognition', WHISPER_MODEL_ID, {
-      device,
+      device: 'wasm',
       dtype: 'q8',
       progress_callback: (info: ProgressInfo) => {
         const event = toProgressEvent(info);

@@ -177,4 +177,11 @@ describe('generateFeedback', () => {
     const { goodPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, insertions: [] });
     expect(goodPoints.some((p) => p.includes('付け足すことなく'))).toBe(true);
   });
+
+  it('全語missed（空認識）+挿入語ゼロでは「原文に忠実」の偽陽性Good Pointを出さず、認識できなかった旨をDevelopment Pointの先頭に出す', () => {
+    const wordMarks = buildWordMarks(0, ['The', 'quick', 'brown', 'fox'], ['missed', 'missed', 'missed', 'missed']);
+    const { goodPoints, devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 0, insertions: [] });
+    expect(goodPoints.some((p) => p.includes('付け足すことなく'))).toBe(false);
+    expect(devPoints[0]).toContain('音声がほとんど認識できませんでした');
+  });
 });
