@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LocalMaterialImport } from '../features/materials/LocalMaterialImport';
 import { getAllMaterialProgress, type Material, type MaterialProgress } from '../lib/db';
 import { formatTime } from '../lib/audio';
+import { articleHeadingTitle } from '../lib/articleTitle';
 import { useMaterialsStore } from '../stores/useMaterialsStore';
 
 type LevelFilter = 'all' | 0 | 1 | 2 | 3;
@@ -15,13 +16,6 @@ const LEVEL_LABELS: Record<Exclude<LevelFilter, 'all'>, string> = {
 };
 
 const ALL_CATEGORIES = 'all';
-
-/** Material.title は分割教材だと「元記事タイトル (part/partCount)」形式（DESIGN.md §3）。末尾のこの部分を取り除いて記事見出しにする。 */
-const SECTION_TITLE_SUFFIX_RE = /\s*\(\d+\/\d+\)\s*$/;
-
-function articleHeadingTitle(title: string): string {
-  return title.replace(SECTION_TITLE_SUFFIX_RE, '');
-}
 
 /** ライブラリ表示用のグループ単位。分割教材(articleId持ち・partCount>1)は記事単位でまとめる。 */
 interface MaterialGroup {
@@ -183,6 +177,7 @@ export function MaterialsPage() {
                 sections={g.sections}
                 progressByMaterial={progressByMaterial}
                 onSelectSection={(id) => navigate(`/practice/${id}`)}
+                onQuiz={(articleId) => navigate(`/quiz/${articleId}`)}
               />
             ) : (
               <MaterialListItem
@@ -235,14 +230,19 @@ function ArticleGroupItem({
   sections,
   progressByMaterial,
   onSelectSection,
+  onQuiz,
 }: {
   articleTitle: string;
   sections: Material[];
   progressByMaterial: Map<string, MaterialProgress>;
   onSelectSection: (materialId: string) => void;
+  onQuiz: (articleId: string) => void;
 }) {
   const first = sections[0];
   const partCount = first.partCount ?? sections.length;
+  // DESIGN.md §8b: doneセクションが1つ以上で確認テストボタンを活性にする。
+  const doneCount = sections.filter((s) => progressByMaterial.get(s.id)?.status === 'done').length;
+  const articleId = first.articleId ?? first.id;
 
   return (
     <li className="rounded-lg border border-neutral-200 p-3">
@@ -261,6 +261,24 @@ function ArticleGroupItem({
           <span>・</span>
           <span>全{partCount}セクション</span>
         </span>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => onQuiz(articleId)}
+          disabled={doneCount === 0}
+          className={`rounded-full border px-3 py-1 text-xs font-medium ${
+            doneCount === 0
+              ? 'border-neutral-200 text-neutral-300'
+              : 'border-tomato-300 text-tomato-600 active:bg-tomato-50'
+          }`}
+        >
+          確認テスト
+        </button>
+        {doneCount === 0 ? (
+          <span className="text-xs text-neutral-400">セクションを完了すると挑戦できます</span>
+        ) : null}
       </div>
 
       <ul className="mt-2 flex flex-col gap-1">

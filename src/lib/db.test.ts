@@ -1,11 +1,16 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  addQuizResult,
   addSubmission,
   getAllMaterials,
   getMaterial,
   getMaterialProgress,
+  getMaterialsByArticleId,
+  getQuizResultsByArticle,
+  getRecentQuizResults,
   getSubmissionsByMaterial,
+  markMaterialProgressDone,
   newId,
   putMaterial,
   putMaterialProgress,
@@ -13,6 +18,7 @@ import {
   syncBundledMaterials,
   touchMaterialProgress,
   type Material,
+  type QuizResult,
   type Submission,
 } from './db';
 
@@ -94,6 +100,46 @@ describe('materialProgress', () => {
   it('進捗が無い教材はundefinedを返す', async () => {
     const progress = await getMaterialProgress('does-not-exist');
     expect(progress).toBeUndefined();
+  });
+});
+
+describe('markMaterialProgressDone (DESIGN.md §8b)', () => {
+  it('既存レコードのstatusをdoneに更新する（daysPracticed/totalLoopsは維持）', async () => {
+    const materialId = 'local-done-1';
+    await touchMaterialProgress(materialId, '2026-07-17', 'shadowing', 5);
+
+    const progress = await markMaterialProgressDone(materialId, '2026-07-18');
+
+    expect(progress.status).toBe('done');
+    expect(progress.totalLoops).toBe(5);
+    expect(progress.daysPracticed).toEqual(['2026-07-17', '2026-07-18']);
+  });
+
+  it('レコードが無い場合でも新規作成してdoneにする（ステップを飛ばして直接提出したケース）', async () => {
+    const materialId = 'local-done-2';
+    const progress = await markMaterialProgressDone(materialId, '2026-07-18');
+
+    expect(progress.status).toBe('done');
+    expect(progress.daysPracticed).toEqual(['2026-07-18']);
+  });
+
+  it('既にdoneなら冪等（daysPracticedに新しい日付を足さない）', async () => {
+    const materialId = 'local-done-3';
+    await markMaterialProgressDone(materialId, '2026-07-17');
+    const progress = await markMaterialProgressDone(materialId, '2026-07-18');
+
+    expect(progress.status).toBe('done');
+    expect(progress.daysPracticed).toEqual(['2026-07-17']);
+  });
+
+  it('touchMaterialProgressはdoneをactiveへ巻き戻さない（継続練習してもdoneのまま）', async () => {
+    const materialId = 'local-done-4';
+    await touchMaterialProgress(materialId, '2026-07-17', 'shadowing', 1);
+    await markMaterialProgressDone(materialId, '2026-07-17');
+
+    const progress = await touchMaterialProgress(materialId, '2026-07-18', 'shadowing', 1);
+
+    expect(progress.status).toBe('done');
   });
 });
 
@@ -238,5 +284,55 @@ describe('syncBundledMaterials', () => {
 
     await expect(syncBundledMaterials('/')).resolves.toBeUndefined();
     expect(await getMaterial('voa-1000-p1')).toBeDefined();
+  });
+});
+
+describe('getMaterialsByArticleId', () => {
+  it('同一articleIdのセクションをpart順で返す', async () => {
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p2', part: 2 }));
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p1', part: 1 }));
+    await putMaterial(makeBundledMaterial({ id: 'voa-2000-p1', articleId: 'voa-2000', part: 1 }));
+
+    const sections = await getMaterialsByArticleId('voa-1000');
+
+    expect(sections.map((m) => m.id)).toEqual(['voa-1000-p1', 'voa-1000-p2']);
+  });
+});
+
+function makeQuizResult(overrides: Partial<QuizResult> = {}): QuizResult {
+  return {
+    id: newId('quiz'),
+    articleId: 'voa-1000',
+    date: '2026-07-18',
+    sectionIds: ['voa-1000-p1'],
+    total: 5,
+    correct: 4,
+    createdAt: Date.now(),
+    ...overrides,
+  };
+}
+
+describe('quizResults（DESIGN.md §8b）', () => {
+  it('保存した結果を記事ごとに新しい順で取得できる', async () => {
+    const older = makeQuizResult({ id: newId('quiz'), createdAt: 1000 });
+    const newer = makeQuizResult({ id: newId('quiz'), createdAt: 2000 });
+    await addQuizResult(older);
+    await addQuizResult(newer);
+    await addQuizResult(makeQuizResult({ id: newId('quiz'), articleId: 'voa-9999', createdAt: 3000 }));
+
+    const list = await getQuizResultsByArticle('voa-1000');
+
+    expect(list.map((r) => r.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('getRecentQuizResultsは全記事横断で新しい順に最大limit件を返す', async () => {
+    for (let i = 0; i < 7; i++) {
+      await addQuizResult(makeQuizResult({ id: newId('quiz'), createdAt: i }));
+    }
+
+    const recent = await getRecentQuizResults(3);
+
+    expect(recent).toHaveLength(3);
+    expect(recent.map((r) => r.createdAt)).toEqual([6, 5, 4]);
   });
 });

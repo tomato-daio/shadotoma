@@ -73,6 +73,17 @@ export interface MaterialProgress {
   status: 'not-started' | 'active' | 'done';
 }
 
+// store: quizResults（確認テスト＝穴埋めテストの結果。DESIGN.md §8b M5）
+export interface QuizResult {
+  id: string;
+  articleId: string; // 出題対象の記事グループキー（Material.articleId）
+  date: string; // 実施した学習日（learningDate基準、"YYYY-MM-DD"）
+  sectionIds: string[]; // 出題対象にしたセクション（Material.id）の一覧
+  total: number;
+  correct: number;
+  createdAt: number; // epoch ms
+}
+
 export type AppStateValue = string | number | boolean | null;
 
 interface AppStateRecord {
@@ -104,16 +115,31 @@ interface ShadotomaDBSchema extends DBSchema {
     key: string;
     value: AppStateRecord;
   };
+  quizResults: {
+    key: string;
+    value: QuizResult;
+    indexes: { 'by-article': string };
+  };
 }
 
 const DB_NAME = 'shadotoma';
-const DB_VERSION = 1;
+// v1→v2（M5）: quizResults ストアを追加（DESIGN.md §8b）。既存ストアはif存在チェックで
+// 触らないため、v1で作成済みのユーザーデータもそのまま残る。
+// v2→v3: 「バージョンだけ2に上がりquizResults未作成」の壊れたDB（更新途中のタブ多重等で発生しうる）を
+// 自己修復するための再実行。upgradeは全ストア冪等なので何度走っても安全。
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<ShadotomaDBSchema>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<ShadotomaDBSchema>> {
   if (!dbPromise) {
     dbPromise = openDB<ShadotomaDBSchema>(DB_NAME, DB_VERSION, {
+      // 新しいバージョンのタブがアップグレードを待っているとき、この接続を手放して
+      // 全タブが永久に固まるのを防ぐ（この接続の次回利用時は再オープンされる）。
+      blocking(_currentVersion, _blockedVersion, _event) {
+        void dbPromise?.then((db) => db.close());
+        dbPromise = null;
+      },
       upgrade(db) {
         if (!db.objectStoreNames.contains('materials')) {
           const store = db.createObjectStore('materials', { keyPath: 'id' });
@@ -134,6 +160,10 @@ export function getDB(): Promise<IDBPDatabase<ShadotomaDBSchema>> {
         }
         if (!db.objectStoreNames.contains('appState')) {
           db.createObjectStore('appState', { keyPath: 'key' });
+        }
+        if (!db.objectStoreNames.contains('quizResults')) {
+          const store = db.createObjectStore('quizResults', { keyPath: 'id' });
+          store.createIndex('by-article', 'articleId');
         }
       },
     });
@@ -174,6 +204,15 @@ export async function getAllMaterials(): Promise<Material[]> {
 export async function deleteMaterial(id: string): Promise<void> {
   const db = await getDB();
   await db.delete('materials', id);
+}
+
+/**
+ * 同一記事（Material.articleId）に属するセクション一覧をpart順で取得する（DESIGN.md §8b: 確認テストの出題対象探索用）。
+ * 教材数は個人利用規模のため、getAllMaterialsしてメモリ上でフィルタする。
+ */
+export async function getMaterialsByArticleId(articleId: string): Promise<Material[]> {
+  const all = await getAllMaterials();
+  return all.filter((m) => m.articleId === articleId).sort((a, b) => (a.part ?? 0) - (b.part ?? 0));
 }
 
 // ---- sessions ----
@@ -250,7 +289,41 @@ export async function touchMaterialProgress(
     daysPracticed,
     totalLoops: (existing?.totalLoops ?? 0) + loopsDelta,
     lastStep: step,
-    status: daysPracticed.length > 0 ? 'active' : 'not-started',
+    // 既にdone（DESIGN.md §8b）になっている教材は、その後も継続練習した場合にactiveへ
+    // 巻き戻さない（doneセクションは確認テストの出題対象になるため、状態を保つ）。
+    status: existing?.status === 'done' ? 'done' : daysPracticed.length > 0 ? 'active' : 'not-started',
+  };
+  await tx.store.put(next);
+  await tx.done;
+  return next;
+}
+
+/**
+ * MaterialProgress.status を 'done' に確定する（DESIGN.md §8b前提: 提出のjudge.matchRate≥0.85、
+ * または4日目の練習完了時）。
+ *
+ * 呼び出し時点でレコードが無い場合（例: ステップを飛ばして直接提出した場合）も、
+ * `date` を daysPracticed に含めた新規レコードを作って done にする（安全側に倒す）。
+ * 既に done なら何もせずそのまま返す（冪等）。
+ */
+export async function markMaterialProgressDone(materialId: string, date: string): Promise<MaterialProgress> {
+  const db = await getDB();
+  const tx = db.transaction('materialProgress', 'readwrite');
+  const existing = await tx.store.get(materialId);
+  if (existing?.status === 'done') {
+    await tx.done;
+    return existing;
+  }
+  const daysPracticed = existing ? [...existing.daysPracticed] : [];
+  if (!daysPracticed.includes(date)) {
+    daysPracticed.push(date);
+  }
+  const next: MaterialProgress = {
+    materialId,
+    daysPracticed,
+    totalLoops: existing?.totalLoops ?? 0,
+    lastStep: existing?.lastStep ?? 'shadowing',
+    status: 'done',
   };
   await tx.store.put(next);
   await tx.done;
@@ -283,6 +356,27 @@ export async function getAppState<T extends AppStateValue = AppStateValue>(
 export async function setAppState(key: string, value: AppStateValue): Promise<void> {
   const db = await getDB();
   await db.put('appState', { key, value });
+}
+
+// ---- quizResults（DESIGN.md §8b M5） ----
+
+export async function addQuizResult(result: QuizResult): Promise<void> {
+  const db = await getDB();
+  await db.put('quizResults', result);
+}
+
+/** 指定記事の確認テスト結果を新しい順で取得する。 */
+export async function getQuizResultsByArticle(articleId: string): Promise<QuizResult[]> {
+  const db = await getDB();
+  const list = await db.getAllFromIndex('quizResults', 'by-article', articleId);
+  return list.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** 進捗ページの「最近のテスト結果」表示用に、全記事横断で新しい順に最大limit件取得する。 */
+export async function getRecentQuizResults(limit = 5): Promise<QuizResult[]> {
+  const db = await getDB();
+  const list = await db.getAll('quizResults');
+  return list.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
 }
 
 // ---- bundled材料の同期 ----

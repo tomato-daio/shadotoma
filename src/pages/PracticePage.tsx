@@ -6,8 +6,17 @@ import { SubmissionResultPanel, type JudgeRunStatus } from '../features/judge/Su
 import { PracticeWizard, type SubmitOutcome } from '../features/practice/PracticeWizard';
 import { SubmissionHistory } from '../features/recorder/SubmissionHistory';
 import { loadAudioDuration } from '../lib/audio';
-import { addSubmission, getMaterial, getSubmissionsByMaterial, newId, type JudgeResult, type Material } from '../lib/db';
+import {
+  addSubmission,
+  getMaterial,
+  getSubmissionsByMaterial,
+  markMaterialProgressDone,
+  newId,
+  type JudgeResult,
+  type Material,
+} from '../lib/db';
 import { learningDate } from '../lib/dates';
+import { NEXT_MATERIAL_SUGGEST_MATCH_RATE } from '../lib/practiceFlow';
 
 export function PracticePage() {
   const { materialId } = useParams<{ materialId: string }>();
@@ -114,6 +123,10 @@ export function PracticePage() {
       });
 
       await addSubmission({ id, materialId, date, audioBlob: blob, mimeType, transcript, judge, createdAt: Date.now() });
+      // DESIGN.md §8b前提: 提出のjudge.matchRate>=0.85でMaterialProgress.statusをdone確定する。
+      if (judge.matchRate >= NEXT_MATERIAL_SUGGEST_MATCH_RATE) {
+        await markMaterialProgressDone(materialId, date);
+      }
       setLastJudge(judge);
       setJudgeStatus('done');
       setRefreshKey((k) => k + 1);

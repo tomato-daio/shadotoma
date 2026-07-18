@@ -3,6 +3,7 @@ import { TabLayout } from './components/TabLayout';
 import { MaterialsPage } from './pages/MaterialsPage';
 import { PracticePage } from './pages/PracticePage';
 import { ProgressPage } from './pages/ProgressPage';
+import { QuizPage } from './pages/QuizPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TodayPage } from './pages/TodayPage';
 
@@ -17,6 +18,7 @@ export function App() {
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="/practice/:materialId" element={<PracticePage />} />
+        <Route path="/quiz/:articleId" element={<QuizPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>

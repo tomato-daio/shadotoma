@@ -6,9 +6,10 @@
  * 外部へは一切送信しない。
  */
 
-import { getDB, type AppStateValue, type Material, type MaterialProgress, type PracticeSession, type Submission } from './db';
+import { getDB, type AppStateValue, type Material, type MaterialProgress, type PracticeSession, type QuizResult, type Submission } from './db';
 
-const BACKUP_VERSION = 1;
+// v2: quizResults を追加（v1のバックアップも読み込み可能: quizResults不在なら空として復元）
+const BACKUP_VERSION = 2;
 const BACKUP_APP_ID = 'shadotoma';
 
 interface BlobField {
@@ -38,6 +39,7 @@ export interface BackupBundle {
   submissions: ExportedSubmission[];
   materialProgress: MaterialProgress[];
   appState: AppStateEntry[];
+  quizResults?: QuizResult[];
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -80,12 +82,13 @@ async function exportSubmission(s: Submission): Promise<ExportedSubmission> {
 /** 全データをエクスポート用のJSON Blobにまとめる。 */
 export async function exportAllData(): Promise<Blob> {
   const db = await getDB();
-  const [materials, sessions, submissions, materialProgress, appState] = await Promise.all([
+  const [materials, sessions, submissions, materialProgress, appState, quizResults] = await Promise.all([
     db.getAll('materials'),
     db.getAll('sessions'),
     db.getAll('submissions'),
     db.getAll('materialProgress'),
     db.getAll('appState'),
+    db.getAll('quizResults'),
   ]);
 
   const [exportedMaterials, exportedSubmissions] = await Promise.all([
@@ -102,6 +105,7 @@ export async function exportAllData(): Promise<Blob> {
     submissions: exportedSubmissions,
     materialProgress,
     appState,
+    quizResults,
   };
 
   return new Blob([JSON.stringify(bundle)], { type: 'application/json' });
@@ -125,7 +129,8 @@ function isBackupBundle(data: unknown): data is BackupBundle {
     Array.isArray(b.submissions) &&
     Array.isArray(b.sessions) &&
     Array.isArray(b.materialProgress) &&
-    Array.isArray(b.appState)
+    Array.isArray(b.appState) &&
+    (b.quizResults === undefined || Array.isArray(b.quizResults))
   );
 }
 
@@ -160,7 +165,7 @@ export async function importAllData(file: Blob): Promise<void> {
   const submissions = data.submissions.map(importSubmission);
 
   const db = await getDB();
-  const storeNames = ['materials', 'sessions', 'submissions', 'materialProgress', 'appState'] as const;
+  const storeNames = ['materials', 'sessions', 'submissions', 'materialProgress', 'appState', 'quizResults'] as const;
   const tx = db.transaction(storeNames, 'readwrite');
   await Promise.all(storeNames.map((name) => tx.objectStore(name).clear()));
   await Promise.all([
@@ -169,6 +174,7 @@ export async function importAllData(file: Blob): Promise<void> {
     ...submissions.map((s) => tx.objectStore('submissions').put(s)),
     ...data.materialProgress.map((p) => tx.objectStore('materialProgress').put(p)),
     ...data.appState.map((a) => tx.objectStore('appState').put(a)),
+    ...(data.quizResults ?? []).map((q) => tx.objectStore('quizResults').put(q)),
   ]);
   await tx.done;
 }

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatTime } from '../../lib/audio';
+import { RATE_PRESETS } from '../player/AudioPlayer';
 import { useRecorder } from './useRecorder';
 
 export interface RecorderUIProps {
-  /** 聴き比べ用のお手本音声URL。 */
+  /** お手本音声URL。録音開始と同時に自動再生し、録音後の聴き比べにも使う。 */
   referenceSrc: string;
   onSubmit: (blob: Blob, mimeType: string) => Promise<void> | void;
   className?: string;
@@ -12,7 +13,7 @@ export interface RecorderUIProps {
 type CompareTarget = 'own' | 'reference';
 
 export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderUIProps) {
-  const recorder = useRecorder();
+  const recorder = useRecorder(referenceSrc);
   const [compareTarget, setCompareTarget] = useState<CompareTarget>('own');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -68,6 +69,27 @@ export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderU
 
       {!recorder.recordedBlob ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-neutral-200 p-4">
+          {/* お手本の速度プリセット（録音開始前・録音中どちらでも変更可） */}
+          <div className="flex w-full flex-col gap-1">
+            <span className="text-xs text-neutral-500">お手本の速度</span>
+            <div className="flex gap-2">
+              {RATE_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => recorder.setRate(preset)}
+                  className={`flex-1 rounded-md border px-2 py-1 text-xs ${
+                    Math.abs(recorder.rate - preset) < 0.001
+                      ? 'border-tomato-500 bg-tomato-500 text-white'
+                      : 'border-neutral-300 text-neutral-600'
+                  }`}
+                >
+                  {preset}x
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="text-2xl font-mono text-neutral-700">{formatTime(recorder.elapsedSec)}</div>
           {/* レベルメーター */}
           <div className="h-3 w-full overflow-hidden rounded-full bg-neutral-100">
@@ -76,9 +98,38 @@ export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderU
               style={{ width: `${Math.round(recorder.level * 100)}%` }}
             />
           </div>
+
+          {recorder.isRecording ? (
+            <div className="flex w-full flex-col gap-1">
+              <div className="flex justify-between text-xs text-neutral-500">
+                <span>お手本の進行</span>
+                <span>
+                  {formatTime(recorder.referenceCurrentTime)} / {formatTime(recorder.referenceDuration)}
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+                <div
+                  className="h-full bg-neutral-400 transition-[width] duration-75"
+                  style={{
+                    width: `${
+                      recorder.referenceDuration > 0
+                        ? Math.min(100, Math.round((recorder.referenceCurrentTime / recorder.referenceDuration) * 100))
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              {recorder.referenceFinished ? (
+                <p className="mt-1 text-xs font-semibold text-tomato-600">
+                  お手本が終わりました。話し終えたら停止を押してください。
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <button
             type="button"
-            onClick={recorder.isRecording ? recorder.stop : recorder.start}
+            onClick={recorder.isRecording ? recorder.stop : () => void recorder.start()}
             className={`rounded-full px-6 py-3 text-base font-semibold text-white active:opacity-90 ${
               recorder.isRecording ? 'bg-neutral-700' : 'bg-tomato-500'
             }`}

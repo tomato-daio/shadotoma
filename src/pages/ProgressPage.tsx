@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MatchRateChart } from '../features/progress/MatchRateChart';
 import { PracticeCalendar } from '../features/progress/PracticeCalendar';
+import { articleHeadingTitle } from '../lib/articleTitle';
 import {
   getAllMaterialProgress,
   getAllMaterials,
   getAllPracticedDates,
   getAllSubmissions,
+  getRecentQuizResults,
   type Material,
   type MaterialProgress,
+  type QuizResult,
   type Submission,
 } from '../lib/db';
 import { calcStreak, learningDate } from '../lib/dates';
+
+const RECENT_QUIZ_RESULT_LIMIT = 5;
 
 const STATUS_LABEL: Record<MaterialProgress['status'], string> = {
   'not-started': '未開始',
@@ -19,32 +25,54 @@ const STATUS_LABEL: Record<MaterialProgress['status'], string> = {
 };
 
 export function ProgressPage() {
+  const navigate = useNavigate();
   const [streak, setStreak] = useState(0);
   const [practicedDates, setPracticedDates] = useState<string[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [progresses, setProgresses] = useState<MaterialProgress[]>([]);
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([getAllPracticedDates(), getAllSubmissions(), getAllMaterials(), getAllMaterialProgress()]).then(
-      ([dates, subs, mats, progs]) => {
-        if (cancelled) return;
-        setPracticedDates(dates);
-        setStreak(calcStreak(dates, learningDate(new Date())));
-        setSubmissions(subs);
-        setMaterials(mats);
-        setProgresses(progs);
-        setLoading(false);
-      },
-    );
+    void Promise.all([
+      getAllPracticedDates(),
+      getAllSubmissions(),
+      getAllMaterials(),
+      getAllMaterialProgress(),
+      getRecentQuizResults(RECENT_QUIZ_RESULT_LIMIT),
+    ]).then(([dates, subs, mats, progs, quizzes]) => {
+      if (cancelled) return;
+      setPracticedDates(dates);
+      setStreak(calcStreak(dates, learningDate(new Date())));
+      setSubmissions(subs);
+      setMaterials(mats);
+      setProgresses(progs);
+      setQuizResults(quizzes);
+      setLoading(false);
+    }).catch((err: unknown) => {
+      // 一部の読み込みに失敗しても「読み込み中…」のまま固まらせない（空表示にフォールバック）
+      console.error('進捗データの読み込みに失敗しました', err);
+      if (!cancelled) setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
   const materialTitleById = useMemo(() => new Map(materials.map((m) => [m.id, m.title])), [materials]);
+
+  // 確認テスト結果のarticleIdから記事見出しを引く（bundled教材のtitleは"元記事 (n/m)"形式なので剥がす）。
+  const articleTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of materials) {
+      if (m.articleId && !map.has(m.articleId)) {
+        map.set(m.articleId, articleHeadingTitle(m.title));
+      }
+    }
+    return map;
+  }, [materials]);
 
   const matchRatePoints = useMemo(() => {
     return submissions
@@ -55,8 +83,12 @@ export function ProgressPage() {
   }, [submissions]);
 
   const sortedProgresses = useMemo(
-    () => progresses.slice().sort((a, b) => b.daysPracticed.length - a.daysPracticed.length),
-    [progresses],
+    () =>
+      progresses
+        // 教材の入れ替え（セクション分割等）で本体が削除された進捗は表示しない
+        .filter((p) => materialTitleById.has(p.materialId))
+        .sort((a, b) => b.daysPracticed.length - a.daysPracticed.length),
+    [progresses, materialTitleById],
   );
 
   if (loading) {
@@ -103,6 +135,33 @@ export function ProgressPage() {
                 <span className="shrink-0 text-xs text-neutral-400">
                   {p.daysPracticed.length}日 ・ {STATUS_LABEL[p.status]}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-xl border border-neutral-200 p-4">
+        <p className="text-sm font-medium text-neutral-700">最近のテスト結果</p>
+        {quizResults.length === 0 ? (
+          <p className="text-xs text-neutral-400">まだ確認テストの記録がありません</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {quizResults.map((r) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/quiz/${r.articleId}`)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-neutral-100 px-3 py-2 text-left text-sm active:bg-neutral-50"
+                >
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-neutral-700">{articleTitleById.get(r.articleId) ?? r.articleId}</span>
+                    <span className="text-xs text-neutral-400">{r.date}</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-tomato-600">
+                    {r.correct}/{r.total}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

@@ -3,12 +3,19 @@ import {
   addSession,
   getMaterialProgress,
   getSubmissionsByMaterial,
+  markMaterialProgressDone,
   newId,
   touchMaterialProgress,
   type MaterialProgress,
 } from '../../lib/db';
 import { learningDate } from '../../lib/dates';
-import { computeDayNumber, getWizardSteps, shouldSuggestNextMaterial, type WizardStepConfig } from '../../lib/practiceFlow';
+import {
+  computeDayNumber,
+  getWizardSteps,
+  NEXT_MATERIAL_SUGGEST_DAY,
+  shouldSuggestNextMaterial,
+  type WizardStepConfig,
+} from '../../lib/practiceFlow';
 
 export interface UsePracticeWizardResult {
   loading: boolean;
@@ -112,7 +119,13 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
           loops,
           startedAt: Date.now(),
         });
-        const nextProgress = await touchMaterialProgress(materialId, today, currentStep.step, loops);
+        let nextProgress = await touchMaterialProgress(materialId, today, currentStep.step, loops);
+        const isLastStep = currentIndex + 1 >= steps.length;
+        // DESIGN.md §8b前提: 4日目の練習完了時（＝その日の最終ステップを完了した時点）にdone確定する。
+        // matchRate>=0.85側のdone確定はPracticePage側の提出ハンドラで行う。
+        if (isLastStep && dayNumber >= NEXT_MATERIAL_SUGGEST_DAY) {
+          nextProgress = await markMaterialProgressDone(materialId, today);
+        }
         setProgress(nextProgress);
         setCurrentIndex((i) => {
           if (i + 1 >= steps.length) {
@@ -126,7 +139,7 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
         setCompleting(false);
       }
     },
-    [materialId, currentStep, today, steps.length],
+    [materialId, currentStep, today, steps.length, currentIndex, dayNumber],
   );
 
   const goBack = useCallback(() => {
