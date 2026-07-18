@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { alignWords, buildScriptWords } from '../../lib/align';
-import { decodeToMono16k } from '../../lib/audio';
+import { decodeToMono16k, WHISPER_SAMPLE_RATE } from '../../lib/audio';
 import type { Material } from '../../lib/db';
-import { computeMatchRate } from '../../lib/feedback';
 import { transcribeAudio, type WhisperProgressEvent } from './whisper';
 
-/** お手本音声を自己添削した場合の合格ライン（DESIGN.md §10 M3-7: matchRate>0.8が期待値）。 */
+/** 自己テストで文字起こしする冒頭部分の長さ（秒）。実行時間短縮のため全音声ではなくここだけを使う。 */
+const SELF_TEST_CLIP_SEC = 60;
+
+/**
+ * 自己テストの合否閾値（DESIGN.md §10 M3-7: precision>0.8が期待値）。
+ * 冒頭60秒だけを文字起こしするため、スクリプト全体に対するmatchRate（recall）は使えない
+ * （後半が丸ごとmissed扱いになり必ず低く出てしまう）。代わりに「認識できた語のうち、
+ * スクリプトと正しく整列した語の割合」= precision（sub含めず: ok数/認識語数）を使う。
+ */
 export const SELF_TEST_PASS_THRESHOLD = 0.8;
 
 type SelfTestStatus = 'idle' | 'running' | 'done' | 'error';
@@ -14,7 +21,7 @@ interface SelfTestState {
   status: SelfTestStatus;
   phase?: WhisperProgressEvent['phase'];
   progress?: number;
-  matchRate?: number;
+  precision?: number;
   materialTitle?: string;
   error?: string;
 }
@@ -42,8 +49,10 @@ const PHASE_LABEL: Record<WhisperProgressEvent['phase'], string> = {
 
 /**
  * 添削エンジン自己テスト（DESIGN.md §10 M3-7・検収用）。
- * bundled教材のお手本mp3自体をWhisperにかけ、その教材自身のスクリプトとアラインしてmatchRateを
- * 表示する。お手本音声を対象にしているためmatchRateが高くなるはずで、これが検収の合否基準になる。
+ * bundled教材のお手本mp3自体の冒頭60秒（SELF_TEST_CLIP_SEC）だけをWhisperにかけ、その教材自身の
+ * スクリプトとアラインしてprecision（認識できた語のうちスクリプトと正しく整列した割合）を表示する。
+ * お手本音声を対象にしているためprecisionが高くなるはずで、これが検収の合否基準になる。
+ * 全音声（数分）を処理すると自己テストだけで数分かかるため、冒頭部分のみに絞って実行時間を抑えている。
  */
 export function SelfTest({ materials }: SelfTestProps) {
   const [state, setState] = useState<SelfTestState>({ status: 'idle' });
@@ -64,17 +73,23 @@ export function SelfTest({ materials }: SelfTestProps) {
       if (!res.ok) throw new Error(`音声の取得に失敗しました (HTTP ${res.status})`);
       const blob = await res.blob();
 
-      const pcm = await decodeToMono16k(blob);
+      const fullPcm = await decodeToMono16k(blob);
+      // 冒頭SELF_TEST_CLIP_SEC秒だけを文字起こし対象にする（実行時間短縮のため）。
+      const clipLength = Math.min(fullPcm.length, WHISPER_SAMPLE_RATE * SELF_TEST_CLIP_SEC);
+      const pcm = fullPcm.slice(0, clipLength);
+
       const transcript = await transcribeAudio(pcm, (event) => {
         setState((s) => ({ ...s, phase: event.phase, progress: event.progress }));
       });
 
       const scriptWords = buildScriptWords(material.sentences);
       const recognizedWords = transcript.length > 0 ? transcript.split(/\s+/).filter(Boolean) : [];
-      const { wordMarks } = alignWords(scriptWords, recognizedWords);
-      const matchRate = computeMatchRate(wordMarks);
+      // 冒頭部分だけの文字起こしなのでスクリプト全体に対するmatchRate（recall）は使えない
+      // （後半は必ずmissedになり不当に低く出る）。認識語数を分母にしたprecisionを使う。
+      const { matchedCount } = alignWords(scriptWords, recognizedWords);
+      const precision = recognizedWords.length > 0 ? matchedCount / recognizedWords.length : 0;
 
-      setState({ status: 'done', matchRate, materialTitle: material.title });
+      setState({ status: 'done', precision, materialTitle: material.title });
     } catch (err) {
       setState({
         status: 'error',
@@ -95,8 +110,9 @@ export function SelfTest({ materials }: SelfTestProps) {
         {state.status === 'running' ? '実行中…' : '添削エンジン自己テストを実行'}
       </button>
       <p className="text-xs text-neutral-400">
-        bundled教材のお手本音声そのものをWhisperで文字起こしし、教材自身のスクリプトとアラインして
-        matchRateを表示します。お手本音声なので matchRate &gt; {SELF_TEST_PASS_THRESHOLD * 100}% が期待値です。
+        bundled教材のお手本音声の冒頭{SELF_TEST_CLIP_SEC}秒だけをWhisperで文字起こしし、教材自身の
+        スクリプトとアラインしてprecision（認識語のうちスクリプトと整列一致した割合）を表示します。
+        冒頭{SELF_TEST_CLIP_SEC}秒で判定するため、お手本音声なら precision &gt; {SELF_TEST_PASS_THRESHOLD * 100}% が期待値です。
       </p>
 
       {state.status === 'running' ? (
@@ -112,14 +128,14 @@ export function SelfTest({ materials }: SelfTestProps) {
         </p>
       ) : null}
 
-      {state.status === 'done' && state.matchRate !== undefined ? (
+      {state.status === 'done' && state.precision !== undefined ? (
         <p
           className={`text-sm font-semibold ${
-            state.matchRate > SELF_TEST_PASS_THRESHOLD ? 'text-green-700' : 'text-red-600'
+            state.precision > SELF_TEST_PASS_THRESHOLD ? 'text-green-700' : 'text-red-600'
           }`}
         >
-          [{state.materialTitle}] matchRate = {(state.matchRate * 100).toFixed(1)}% (
-          {state.matchRate > SELF_TEST_PASS_THRESHOLD ? '合格' : '要確認'})
+          [{state.materialTitle}] precision(冒頭{SELF_TEST_CLIP_SEC}秒) = {(state.precision * 100).toFixed(1)}% (
+          {state.precision > SELF_TEST_PASS_THRESHOLD ? '合格' : '要確認'})
         </p>
       ) : null}
 

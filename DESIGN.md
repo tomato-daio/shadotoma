@@ -147,7 +147,7 @@ interface MaterialProgress {
 `src/features/judge/`
 
 1. 提出音声Blob → AudioContext.decodeAudioData → 16kHzモノラルFloat32へリサンプル
-2. transformers.js の `automatic-speech-recognition` パイプライン（`onnx-community/whisper-tiny.en` 量子化, 常にWASM。dtype:'q8'固定のためWebGPU実行プロバイダには非対応カーネルがあり使用しない）で文字起こし。モデルは初回DL後キャッシュ（Cache API）
+2. transformers.js の `automatic-speech-recognition` パイプライン（`onnx-community/whisper-tiny.en` 量子化, 常にWASM。dtype:'q4'固定。dtype:'q8'はこのtransformers.js/onnxruntime-webの組み合わせだとセッション生成が`Missing required scale ... MatMulNBits`エラーで失敗するため使用不可と判明し、q4に変更した。WebGPU実行プロバイダにも対応する量子化カーネルが無いため使用しない）で文字起こし。モデルは初回DL後キャッシュ（Cache API）。ONNX Runtime WebのWASM実行は数分間メインスレッドをブロックしうる（iPhone Safari等で無応答ページとして強制終了されうる）ため、実処理は`whisper.worker.ts`（module worker）内で行い、UIスレッドをブロックしない
 3. 整列: スクリプト語列 vs 認識語列を正規化（小文字化・約物除去・数字/短縮形の揺れ吸収）して Needleman-Wunsch（一致+1/不一致-1/ギャップ-1程度）で単語アライン → wordMarks生成。`src/lib/align.ts` 純関数・**Vitest必須**
 4. スコア: matchRate、WPM（認識語数/録音秒×60）
 5. Good/Development Point各3件をルールベース生成（例: 最長連続一致区間、前回提出比の改善、missedが集中した文とその文頭語、速度がお手本比±15%以内か等）。`src/lib/feedback.ts` 純関数・Vitestテスト
