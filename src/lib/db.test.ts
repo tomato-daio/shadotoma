@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addSubmission,
   getAllMaterials,
@@ -8,7 +8,9 @@ import {
   getSubmissionsByMaterial,
   newId,
   putMaterial,
+  putMaterialProgress,
   resetDBForTest,
+  syncBundledMaterials,
   touchMaterialProgress,
   type Material,
   type Submission,
@@ -119,5 +121,122 @@ describe('submissions', () => {
 
     const list = await getSubmissionsByMaterial(materialId);
     expect(list.map((s) => s.id)).toEqual([newer.id, older.id]);
+  });
+});
+
+function makeBundledMaterial(overrides: Partial<Material> = {}): Material {
+  return {
+    id: 'voa-1000-p1',
+    source: 'voa',
+    title: 'VOAテスト記事 (1/2)',
+    level: 1,
+    category: 'As It Is',
+    audioUrl: 'materials/audio/voa-1000-p1.mp3',
+    sentences: [{ en: 'Hello.' }],
+    wordCount: 1,
+    addedAt: 1,
+    articleId: 'voa-1000',
+    part: 1,
+    partCount: 2,
+    ...overrides,
+  };
+}
+
+describe('syncBundledMaterials', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('indexの内容をbundled教材として新規追加する', async () => {
+    const indexData = [makeBundledMaterial()];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(indexData), { status: 200 })),
+    );
+
+    await syncBundledMaterials('/');
+
+    const all = await getAllMaterials();
+    expect(all.map((m) => m.id)).toEqual(['voa-1000-p1']);
+  });
+
+  it('既存のbundled教材のうちindexから消えたものはIndexedDBからも削除する', async () => {
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p1' }));
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p2', part: 2 }));
+
+    // 新しいindexには p1 だけが残っている（記事が再分割され p2 が消えたケースを想定）
+    const indexData = [makeBundledMaterial({ id: 'voa-1000-p1', title: '更新後タイトル' })];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(indexData), { status: 200 })),
+    );
+
+    await syncBundledMaterials('/');
+
+    const all = await getAllMaterials();
+    expect(all.map((m) => m.id).sort()).toEqual(['voa-1000-p1']);
+    expect((await getMaterial('voa-1000-p1'))?.title).toBe('更新後タイトル');
+  });
+
+  it('source:localのローカル取り込み教材はindexに無くても絶対に削除しない', async () => {
+    const local: Material = {
+      id: newId('local'),
+      source: 'local',
+      title: 'ローカル取り込み教材',
+      level: 0,
+      category: 'Local',
+      sentences: [{ en: 'Keep me.' }],
+      wordCount: 2,
+      addedAt: Date.now(),
+    };
+    await putMaterial(local);
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p1' }));
+
+    // indexは空（＝bundled教材が全て消えたケース）
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    await syncBundledMaterials('/');
+
+    const all = await getAllMaterials();
+    expect(all.map((m) => m.id)).toEqual([local.id]);
+    expect(await getMaterial(local.id)).toBeDefined();
+  });
+
+  it('indexから消えて削除された教材でもmaterialProgressは残る', async () => {
+    const materialId = 'voa-1000-p1';
+    await putMaterial(makeBundledMaterial({ id: materialId }));
+    await putMaterialProgress({
+      materialId,
+      daysPracticed: ['2026-07-17'],
+      totalLoops: 3,
+      lastStep: 'listening',
+      status: 'active',
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    await syncBundledMaterials('/');
+
+    expect(await getMaterial(materialId)).toBeUndefined();
+    expect(await getMaterialProgress(materialId)).toBeDefined();
+  });
+
+  it('fetch失敗時は例外を投げず既存DBのまま継続する', async () => {
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p1' }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('network error');
+      }),
+    );
+
+    await expect(syncBundledMaterials('/')).resolves.toBeUndefined();
+    expect(await getMaterial('voa-1000-p1')).toBeDefined();
   });
 });

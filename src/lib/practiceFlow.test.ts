@@ -27,12 +27,13 @@ describe('computeDayNumber', () => {
 });
 
 describe('getWizardSteps', () => {
-  it('1日目はリスニング→スクリプト確認→オーバーラッピングの3ステップ', () => {
+  it('1日目はリスニング→スクリプト確認→オーバーラッピング→録音提出の4ステップ', () => {
     const steps = getWizardSteps(1);
-    expect(steps.map((s) => s.step)).toEqual(['listening', 'script', 'overlapping']);
+    expect(steps.map((s) => s.kind)).toEqual(['player', 'player', 'player', 'recorder']);
     expect(steps[0].initialScriptVisible).toBe(false);
     expect(steps[1].initialScriptVisible).toBe(true);
     expect(steps[2].initialScriptVisible).toBe(true);
+    expect(steps[3].initialScriptVisible).toBe(false);
   });
 
   it('2〜4日目はシャドーイング→録音提出の2ステップ', () => {
@@ -46,6 +47,14 @@ describe('getWizardSteps', () => {
 
   it('5日目以降も2〜4日目と同じ構成にフォールバックする', () => {
     expect(getWizardSteps(5)).toEqual(getWizardSteps(2));
+  });
+
+  it('何日目であっても最終ステップは必ずrecorder（毎日提出する仕様。DESIGN.md §4）', () => {
+    for (const day of [1, 2, 3, 4, 5, 10]) {
+      const steps = getWizardSteps(day);
+      const lastStep = steps[steps.length - 1];
+      expect(lastStep.kind).toBe('recorder');
+    }
   });
 });
 

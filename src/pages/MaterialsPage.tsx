@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalMaterialImport } from '../features/materials/LocalMaterialImport';
-import type { Material } from '../lib/db';
+import { getAllMaterialProgress, type Material, type MaterialProgress } from '../lib/db';
 import { formatTime } from '../lib/audio';
 import { useMaterialsStore } from '../stores/useMaterialsStore';
 
@@ -16,16 +16,72 @@ const LEVEL_LABELS: Record<Exclude<LevelFilter, 'all'>, string> = {
 
 const ALL_CATEGORIES = 'all';
 
+/** Material.title は分割教材だと「元記事タイトル (part/partCount)」形式（DESIGN.md §3）。末尾のこの部分を取り除いて記事見出しにする。 */
+const SECTION_TITLE_SUFFIX_RE = /\s*\(\d+\/\d+\)\s*$/;
+
+function articleHeadingTitle(title: string): string {
+  return title.replace(SECTION_TITLE_SUFFIX_RE, '');
+}
+
+/** ライブラリ表示用のグループ単位。分割教材(articleId持ち・partCount>1)は記事単位でまとめる。 */
+interface MaterialGroup {
+  key: string;
+  /** nullなら分割されていない単独教材（従来どおり1行表示）。 */
+  articleTitle: string | null;
+  sections: Material[];
+}
+
+function groupMaterials(materials: Material[]): MaterialGroup[] {
+  const groups: MaterialGroup[] = [];
+  const groupIndexByArticleId = new Map<string, number>();
+
+  for (const m of materials) {
+    const partCount = m.partCount ?? 1;
+    if (m.articleId && partCount > 1) {
+      const existingIndex = groupIndexByArticleId.get(m.articleId);
+      if (existingIndex === undefined) {
+        groupIndexByArticleId.set(m.articleId, groups.length);
+        groups.push({ key: m.articleId, articleTitle: articleHeadingTitle(m.title), sections: [m] });
+      } else {
+        groups[existingIndex].sections.push(m);
+      }
+    } else {
+      groups.push({ key: m.id, articleTitle: null, sections: [m] });
+    }
+  }
+
+  for (const g of groups) {
+    g.sections.sort((a, b) => (a.part ?? 0) - (b.part ?? 0));
+  }
+
+  return groups;
+}
+
 export function MaterialsPage() {
   const { materials, loaded, refresh, upsertLocal } = useMaterialsStore();
   const [importing, setImporting] = useState(false);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
+  const [progressByMaterial, setProgressByMaterial] = useState<Map<string, MaterialProgress>>(new Map());
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loaded) void refresh();
   }, [loaded, refresh]);
+
+  // 進行中セクションの表示用（DESIGN.md §4のマルチセクション練習で「今どのセクションか」が
+  // ライブラリからも分かるように）。教材一覧の読み込みに合わせてmaterialProgressも取得する。
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    void getAllMaterialProgress().then((list) => {
+      if (cancelled) return;
+      setProgressByMaterial(new Map(list.map((p) => [p.materialId, p])));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, materials.length]);
 
   const levelFilteredMaterials = useMemo(
     () => (levelFilter === 'all' ? materials : materials.filter((m) => m.level === levelFilter)),
@@ -51,6 +107,8 @@ export function MaterialsPage() {
         : levelFilteredMaterials.filter((m) => m.category === categoryFilter),
     [levelFilteredMaterials, categoryFilter],
   );
+
+  const groupedMaterials = useMemo(() => groupMaterials(visibleMaterials), [visibleMaterials]);
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -117,9 +175,23 @@ export function MaterialsPage() {
         <p className="text-sm text-neutral-400">条件に一致する教材がありません。</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {visibleMaterials.map((m) => (
-            <MaterialListItem key={m.id} material={m} onSelect={() => navigate(`/practice/${m.id}`)} />
-          ))}
+          {groupedMaterials.map((g) =>
+            g.articleTitle !== null ? (
+              <ArticleGroupItem
+                key={g.key}
+                articleTitle={g.articleTitle}
+                sections={g.sections}
+                progressByMaterial={progressByMaterial}
+                onSelectSection={(id) => navigate(`/practice/${id}`)}
+              />
+            ) : (
+              <MaterialListItem
+                key={g.key}
+                material={g.sections[0]}
+                onSelect={() => navigate(`/practice/${g.sections[0].id}`)}
+              />
+            ),
+          )}
         </ul>
       )}
     </div>
@@ -153,6 +225,71 @@ function MaterialListItem({ material, onSelect }: { material: Material; onSelect
           ) : null}
         </span>
       </button>
+    </li>
+  );
+}
+
+/** セクション分割済み教材を「記事タイトルの見出し＋セクション一覧」でまとめて表示する（DESIGN.md §7b）。 */
+function ArticleGroupItem({
+  articleTitle,
+  sections,
+  progressByMaterial,
+  onSelectSection,
+}: {
+  articleTitle: string;
+  sections: Material[];
+  progressByMaterial: Map<string, MaterialProgress>;
+  onSelectSection: (materialId: string) => void;
+}) {
+  const first = sections[0];
+  const partCount = first.partCount ?? sections.length;
+
+  return (
+    <li className="rounded-lg border border-neutral-200 p-3">
+      <div className="flex flex-col items-start gap-1">
+        <span className="text-sm font-medium text-neutral-800">{articleTitle}</span>
+        <span className="flex flex-wrap items-center gap-x-2 text-xs text-neutral-400">
+          <span>VOA</span>
+          <span>・</span>
+          <span>{first.category}</span>
+          {first.level > 0 ? (
+            <>
+              <span>・</span>
+              <span>{LEVEL_LABELS[first.level as 1 | 2 | 3]}</span>
+            </>
+          ) : null}
+          <span>・</span>
+          <span>全{partCount}セクション</span>
+        </span>
+      </div>
+
+      <ul className="mt-2 flex flex-col gap-1">
+        {sections.map((s) => {
+          const status = progressByMaterial.get(s.id)?.status;
+          const isActive = status === 'active';
+          const isDone = status === 'done';
+          return (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => onSelectSection(s.id)}
+                className={`flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-xs active:bg-neutral-50 ${
+                  isActive ? 'border-tomato-300 bg-tomato-50' : 'border-neutral-200'
+                }`}
+              >
+                <span className="flex items-center gap-1 text-neutral-700">
+                  <span>
+                    セクション {s.part ?? '?'}/{partCount}
+                  </span>
+                  {isActive ? <span className="text-tomato-600">進行中</span> : null}
+                  {isDone ? <span className="text-neutral-400">完了</span> : null}
+                </span>
+                {s.durationSec ? <span className="text-neutral-400">{formatTime(s.durationSec)}</span> : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </li>
   );
 }

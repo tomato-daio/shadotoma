@@ -1,11 +1,11 @@
 [
   {
-    "id": "voa-7997203",
+    "id": "voa-7997203-p1",
     "source": "voa",
-    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear",
+    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear (1/6)",
     "level": 1,
     "category": "As It Is",
-    "audioUrl": "materials/audio/voa-7997203.mp3",
+    "audioUrl": "materials/audio/voa-7997203-p1.mp3",
     "sentences": [
       {
         "en": "In 2024, the number of babies born in South Korea increased for the first time in nine years."
@@ -18,7 +18,23 @@
       },
       {
         "en": "The agency said the country’s fertility rate — the average number of babies born to each woman in her reproductive years — was 0.75 in 2024, up from 0.72 in 2023."
-      },
+      }
+    ],
+    "durationSec": 48,
+    "wordCount": 85,
+    "addedAt": 1784381733324,
+    "articleId": "voa-7997203",
+    "part": 1,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7997203-p2",
+    "source": "voa",
+    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear (2/6)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7997203-p2.mp3",
+    "sentences": [
       {
         "en": "The data represents the first time that the yearly number of births has increased since 2015."
       },
@@ -30,7 +46,23 @@
       },
       {
         "en": "Park Hyun Jung is with the government agency Statistics Korea."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 68,
+    "addedAt": 1784381733324,
+    "articleId": "voa-7997203",
+    "part": 2,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7997203-p3",
+    "source": "voa",
+    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear (3/6)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7997203-p3.mp3",
+    "sentences": [
       {
         "en": "Park said the agency believes the rise is partly due to an increase in marriages following postponements of such plans during the COVID-19 pandemic."
       },
@@ -42,7 +74,23 @@
       },
       {
         "en": "Official data show South Korea’s fertility rate has been the lowest in the developed world in recent years."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 83,
+    "addedAt": 1784381733324,
+    "articleId": "voa-7997203",
+    "part": 3,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7997203-p4",
+    "source": "voa",
+    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear (4/6)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7997203-p4.mp3",
+    "sentences": [
       {
         "en": "In 2022, South Korea was the only country with a fertility rate below one, among members of the Paris-based Organization for Economic Cooperation and Development."
       },
@@ -57,7 +105,23 @@
       },
       {
         "en": "But experts say that it will be difficult to solve the country’s population problems."
-      },
+      }
+    ],
+    "durationSec": 48,
+    "wordCount": 86,
+    "addedAt": 1784381733324,
+    "articleId": "voa-7997203",
+    "part": 4,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7997203-p5",
+    "source": "voa",
+    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear (5/6)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7997203-p5.mp3",
+    "sentences": [
       {
         "en": "Many young people say they do not want to have babies."
       },
@@ -66,7 +130,23 @@
       },
       {
         "en": "Park said that the fertility rate will likely stay on an upward movement at least for another year."
-      },
+      }
+    ],
+    "durationSec": 42,
+    "wordCount": 60,
+    "addedAt": 1784381733324,
+    "articleId": "voa-7997203",
+    "part": 5,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7997203-p6",
+    "source": "voa",
+    "title": "Researchers: South Korea’s Birth Rate Increase Last Year Unclear (6/6)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7997203-p6.mp3",
+    "sentences": [
       {
         "en": "But observers say it remains to be seen whether the rate will go back down as post-pandemic marriages even out."
       },
@@ -83,17 +163,20 @@
         "en": "When we help them realize their hopes, our fertility rate won’t suffer a steep, 45-degree drop,” Choi said."
       }
     ],
-    "durationSec": 276,
-    "wordCount": 471,
-    "addedAt": 1784381733324
+    "durationSec": 48,
+    "wordCount": 89,
+    "addedAt": 1784381733324,
+    "articleId": "voa-7997203",
+    "part": 6,
+    "partCount": 6
   },
   {
-    "id": "voa-8002695",
+    "id": "voa-8002695-p1",
     "source": "voa",
-    "title": "Australian Navy Rescues Rower Crossing Pacific from California",
+    "title": "Australian Navy Rescues Rower Crossing Pacific from California (1/5)",
     "level": 1,
     "category": "As It Is",
-    "audioUrl": "materials/audio/voa-8002695.mp3",
+    "audioUrl": "materials/audio/voa-8002695-p1.mp3",
     "sentences": [
       {
         "en": "A Lithuanian rower attempting to cross the Pacific Ocean has been rescued by an Australian warship after hitting stormy waters off the coast of Queensland state."
@@ -109,7 +192,23 @@
       },
       {
         "en": "Australia’s Maritime Safety Authority organized the rescue."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 83,
+    "addedAt": 1784381737240,
+    "articleId": "voa-8002695",
+    "part": 1,
+    "partCount": 5
+  },
+  {
+    "id": "voa-8002695-p2",
+    "source": "voa",
+    "title": "Australian Navy Rescues Rower Crossing Pacific from California (2/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-8002695-p2.mp3",
+    "sentences": [
       {
         "en": "It said the enclosed boat that Mockus traveled in was mostly destroyed by the powerful waters."
       },
@@ -127,7 +226,23 @@
       },
       {
         "en": "The rower turned on an emergency signal while experiencing stormy seas fueled by 80-kilometer-per-hour winds caused by Tropical Cyclone Alfred."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 87,
+    "addedAt": 1784381737240,
+    "articleId": "voa-8002695",
+    "part": 2,
+    "partCount": 5
+  },
+  {
+    "id": "voa-8002695-p3",
+    "source": "voa",
+    "title": "Australian Navy Rescues Rower Crossing Pacific from California (3/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-8002695-p3.mp3",
+    "sentences": [
       {
         "en": "That led to rescuers establishing radio contact with Mockus."
       },
@@ -145,7 +260,23 @@
       },
       {
         "en": "Peter Bird of Britain became the first to do so in 1983."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 73,
+    "addedAt": 1784381737240,
+    "articleId": "voa-8002695",
+    "part": 3,
+    "partCount": 5
+  },
+  {
+    "id": "voa-8002695-p4",
+    "source": "voa",
+    "title": "Australian Navy Rescues Rower Crossing Pacific from California (4/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-8002695-p4.mp3",
+    "sentences": [
       {
         "en": "He rowed from San Francisco and was pulled behind another boat for the last 48 kilometers to the Australian mainland."
       },
@@ -160,7 +291,23 @@
       },
       {
         "en": "Australian Michelle Lee became the first woman to successfully make the crossing in 2023."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 88,
+    "addedAt": 1784381737240,
+    "articleId": "voa-8002695",
+    "part": 4,
+    "partCount": 5
+  },
+  {
+    "id": "voa-8002695-p5",
+    "source": "voa",
+    "title": "Australian Navy Rescues Rower Crossing Pacific from California (5/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-8002695-p5.mp3",
+    "sentences": [
       {
         "en": "She rowed from the Mexican coastal city of Ensenada to Port Douglas in Queensland."
       },
@@ -177,17 +324,20 @@
         "en": "He set out from Peru and spent 265 days at sea before he was rescued off the southwestern Pacific nation of Vanuatu in 2023."
       }
     ],
-    "durationSec": 222,
-    "wordCount": 404,
-    "addedAt": 1784381737240
+    "durationSec": 41,
+    "wordCount": 73,
+    "addedAt": 1784381737240,
+    "articleId": "voa-8002695",
+    "part": 5,
+    "partCount": 5
   },
   {
-    "id": "voa-7980858",
+    "id": "voa-7980858-p1",
     "source": "voa",
-    "title": "Pearl S. Buck: The First American Woman to Win a Nobel Prize in Literature",
+    "title": "Pearl S. Buck: The First American Woman to Win a Nobel Prize in Literature (1/5)",
     "level": 1,
     "category": "As It Is",
-    "audioUrl": "materials/audio/voa-7980858.mp3",
+    "audioUrl": "materials/audio/voa-7980858-p1.mp3",
     "sentences": [
       {
         "en": "The year was 1931."
@@ -212,7 +362,23 @@
       },
       {
         "en": "But most people remember Pearl Buck for her novels about China."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 81,
+    "addedAt": 1784381739850,
+    "articleId": "voa-7980858",
+    "part": 1,
+    "partCount": 5
+  },
+  {
+    "id": "voa-7980858-p2",
+    "source": "voa",
+    "title": "Pearl S. Buck: The First American Woman to Win a Nobel Prize in Literature (2/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7980858-p2.mp3",
+    "sentences": [
       {
         "en": "She knew the country and its people very well."
       },
@@ -236,7 +402,23 @@
       },
       {
         "en": "In 1910, Pearl went back to the United States to study philosophy at Randolph-Macon Woman’s College in Lynchburg, Virginia."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 77,
+    "addedAt": 1784381739850,
+    "articleId": "voa-7980858",
+    "part": 2,
+    "partCount": 5
+  },
+  {
+    "id": "voa-7980858-p3",
+    "source": "voa",
+    "title": "Pearl S. Buck: The First American Woman to Win a Nobel Prize in Literature (3/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7980858-p3.mp3",
+    "sentences": [
       {
         "en": "After graduation, she returned to China."
       },
@@ -257,7 +439,23 @@
       },
       {
         "en": "His wife is O-Lan."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 72,
+    "addedAt": 1784381739850,
+    "articleId": "voa-7980858",
+    "part": 3,
+    "partCount": 5
+  },
+  {
+    "id": "voa-7980858-p4",
+    "source": "voa",
+    "title": "Pearl S. Buck: The First American Woman to Win a Nobel Prize in Literature (4/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7980858-p4.mp3",
+    "sentences": [
       {
         "en": "They work very hard together and finally make enough money to buy some land for a farm."
       },
@@ -272,7 +470,23 @@
       },
       {
         "en": "Pearl Buck wrote her first books about China at a time when most people in the world knew almost nothing about the Chinese way of life."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 77,
+    "addedAt": 1784381739850,
+    "articleId": "voa-7980858",
+    "part": 4,
+    "partCount": 5
+  },
+  {
+    "id": "voa-7980858-p5",
+    "source": "voa",
+    "title": "Pearl S. Buck: The First American Woman to Win a Nobel Prize in Literature (5/5)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7980858-p5.mp3",
+    "sentences": [
       {
         "en": "After almost 40 years in China, the writer moved back to the United States."
       },
@@ -298,17 +512,20 @@
         "en": "Pearl Buck died in 1973 at the age of 80."
       }
     ],
-    "durationSec": 234,
-    "wordCount": 397,
-    "addedAt": 1784381739850
+    "durationSec": 52,
+    "wordCount": 90,
+    "addedAt": 1784381739850,
+    "articleId": "voa-7980858",
+    "part": 5,
+    "partCount": 5
   },
   {
-    "id": "voa-7983265",
+    "id": "voa-7983265-p1",
     "source": "voa",
-    "title": "France Sets New Record in Hunt for Nuclear Fusion",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (1/7)",
     "level": 1,
     "category": "As It Is",
-    "audioUrl": "materials/audio/voa-7983265.mp3",
+    "audioUrl": "materials/audio/voa-7983265-p1.mp3",
     "sentences": [
       {
         "en": "French scientists have announced they set a new record of 22 minutes for keeping hydrogen atoms in a state called plasma."
@@ -318,7 +535,23 @@
       },
       {
         "en": "France’s Atomic Energy Commission (CEA) said the experiment – carried out February 12 – showed the process kept, or maintained, a state of plasma for 1,337 seconds."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 75,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 1,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7983265-p2",
+    "source": "voa",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (2/7)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7983265-p2.mp3",
+    "sentences": [
       {
         "en": "The CEA added that the new record was 25 percent longer than the previous one, set in China last month."
       },
@@ -327,7 +560,23 @@
       },
       {
         "en": "In a fusion reaction, the centers of two atoms fuse, or join together, to form a new atom with a heavier nucleus, or center."
-      },
+      }
+    ],
+    "durationSec": 47,
+    "wordCount": 66,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 2,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7983265-p3",
+    "source": "voa",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (3/7)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7983265-p3.mp3",
+    "sentences": [
       {
         "en": "This process releases large amounts of energy."
       },
@@ -345,7 +594,23 @@
       },
       {
         "en": "Inside the ring, hydrogen atoms are heated to temperatures up to about 50 million degrees Celsius."
-      },
+      }
+    ],
+    "durationSec": 47,
+    "wordCount": 84,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 3,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7983265-p4",
+    "source": "voa",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (4/7)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7983265-p4.mp3",
+    "sentences": [
       {
         "en": "The process creates plasma that is held together by powerful magnets."
       },
@@ -357,7 +622,23 @@
       },
       {
         "en": "However, Etienvre noted that there are still many \"technological barriers\" to overcome before fusion can \"produce more energy than it consumes.\""
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 64,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 4,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7983265-p5",
+    "source": "voa",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (5/7)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7983265-p5.mp3",
+    "sentences": [
       {
         "en": "Scientists say that for nuclear fusion to succeed, hydrogen atoms will need to be heated up to more than 100 million degrees Celsius."
       },
@@ -369,7 +650,23 @@
       },
       {
         "en": "In the coming months, the research team will look to increase the time they can keep the atoms in a plasma state."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 75,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 5,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7983265-p6",
+    "source": "voa",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (6/7)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7983265-p6.mp3",
+    "sentences": [
       {
         "en": "They hope to bring the total time \"up to several hours combined.\""
       },
@@ -378,7 +675,23 @@
       },
       {
         "en": "Teams from multiple countries are working together in southern France to build the world’s largest tokamak and fusion research center, called ITER."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 64,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 6,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7983265-p7",
+    "source": "voa",
+    "title": "France Sets New Record in Hunt for Nuclear Fusion (7/7)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7983265-p7.mp3",
+    "sentences": [
       {
         "en": "The effort includes scientists from the United States, China, the European Union, India, Japan, South Korea, and Russia."
       },
@@ -389,17 +702,20 @@
         "en": "However, AFP reports that repeated delays and increasing costs have postponed operations at ITER until at least 2033."
       }
     ],
-    "durationSec": 301,
-    "wordCount": 481,
-    "addedAt": 1784381742576
+    "durationSec": 30,
+    "wordCount": 53,
+    "addedAt": 1784381742576,
+    "articleId": "voa-7983265",
+    "part": 7,
+    "partCount": 7
   },
   {
-    "id": "voa-7972239",
+    "id": "voa-7972239-p1",
     "source": "voa",
-    "title": "Senegal Starts Introducing English in Preschools",
+    "title": "Senegal Starts Introducing English in Preschools (1/10)",
     "level": 1,
     "category": "As It Is",
-    "audioUrl": "materials/audio/voa-7972239.mp3",
+    "audioUrl": "materials/audio/voa-7972239-p1.mp3",
     "sentences": [
       {
         "en": "In Senegal, educators are starting to teach English to younger children in an effort to better prepare them to succeed in future educational and professional activities."
@@ -409,7 +725,23 @@
       },
       {
         "en": "Senegalese children who attend preschool – also known as nursery school, are generally under five."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 68,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 1,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p2",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (2/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p2.mp3",
+    "sentences": [
       {
         "en": "Since mid-January, the education ministry has been testing a program that teaches English in more than 600 nursery and primary school classes."
       },
@@ -421,7 +753,23 @@
       },
       {
         "en": "The teacher, Absa Ndiaye, said, \"They're interested in the lesson, and they start a conversation with 'How are you?'\""
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 76,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 2,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p3",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (3/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p3.mp3",
+    "sentences": [
       {
         "en": "Senegal recently became an oil and gas producer and has seen large population growth."
       },
@@ -436,7 +784,23 @@
       },
       {
         "en": "Aissatou Sarr Cisse is in charge of the education ministry's English program."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 69,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 3,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p4",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (4/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p4.mp3",
+    "sentences": [
       {
         "en": "She told AFP that even after some students had studied English for up to seven years, they “can barely communicate properly in English.\""
       },
@@ -448,7 +812,23 @@
       },
       {
         "en": "She added that improving their English will give them access to more opportunities to cooperate “with Senegal’s partners.”"
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 69,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 4,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p5",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (5/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p5.mp3",
+    "sentences": [
       {
         "en": "In March, President Bassirou Diomaye Faye was elected after running a nationalist campaign."
       },
@@ -457,7 +837,23 @@
       },
       {
         "en": "In the schools testing the program, English is taught every Tuesday and Thursday."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 50,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 5,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p6",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (6/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p6.mp3",
+    "sentences": [
       {
         "en": "On both days, two 25-minute lessons are taught in nursery schools and two 30-minute lessons in primary schools."
       },
@@ -469,7 +865,23 @@
       },
       {
         "en": "\"I can see that the students are motivated."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 66,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 6,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p7",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (7/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p7.mp3",
+    "sentences": [
       {
         "en": "Some of them are asking for English lessons to be (taught) every day,\" said Kama, who has a degree in English."
       },
@@ -484,7 +896,23 @@
       },
       {
         "en": "“Computers have been ordered, and in the meantime, we have provided students with printed documents with fun pictures.\""
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 79,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 7,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p8",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (8/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p8.mp3",
+    "sentences": [
       {
         "en": "The project has been praised by Ousmane Sene, director of the Dakar-based West African Research Centre (WARC)."
       },
@@ -499,7 +927,23 @@
       },
       {
         "en": "Additionally, most scientific material worldwide is written in English, said Mathiam Thiam."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 70,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 8,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p9",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (9/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p9.mp3",
+    "sentences": [
       {
         "en": "He helped create the English program."
       },
@@ -514,7 +958,23 @@
       },
       {
         "en": "Samba Dioulde Thiam is a former member of parliament and retired teacher."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 69,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 9,
+    "partCount": 10
+  },
+  {
+    "id": "voa-7972239-p10",
+    "source": "voa",
+    "title": "Senegal Starts Introducing English in Preschools (10/10)",
+    "level": 1,
+    "category": "As It Is",
+    "audioUrl": "materials/audio/voa-7972239-p10.mp3",
+    "sentences": [
       {
         "en": "In an opinion article, he wrote, \"On these grounds alone, introducing English at nursery and primary school levels is a pipe dream."
       },
@@ -534,17 +994,20 @@
         "en": "She told AFP that she \"can't wait to study English in sixth grade.\""
       }
     ],
-    "durationSec": 458,
-    "wordCount": 692,
-    "addedAt": 1784381746317
+    "durationSec": 52,
+    "wordCount": 76,
+    "addedAt": 1784381746317,
+    "articleId": "voa-7972239",
+    "part": 10,
+    "partCount": 10
   },
   {
-    "id": "voa-7998765",
+    "id": "voa-7998765-p1",
     "source": "voa",
-    "title": "Wilbur and Orville Wright: The First Airplane",
+    "title": "Wilbur and Orville Wright: The First Airplane (1/6)",
     "level": 2,
     "category": "Science & Technology",
-    "audioUrl": "materials/audio/voa-7998765.mp3",
+    "audioUrl": "materials/audio/voa-7998765-p1.mp3",
     "sentences": [
       {
         "en": "Wilbur and Orville Wright are the American inventors who made a small engine-powered flying machine."
@@ -563,7 +1026,23 @@
       },
       {
         "en": "Later, the Wright brothers began to design their own flying machine."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 69,
+    "addedAt": 1784381753945,
+    "articleId": "voa-7998765",
+    "part": 1,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7998765-p2",
+    "source": "voa",
+    "title": "Wilbur and Orville Wright: The First Airplane (2/6)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7998765-p2.mp3",
+    "sentences": [
       {
         "en": "They used ideas they had developed from earlier experiments with a toy helicopter, kites, the printing machine and bicycles."
       },
@@ -578,7 +1057,23 @@
       },
       {
         "en": "The Wright brothers did many tests with gliders at Kitty Hawk."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 79,
+    "addedAt": 1784381753945,
+    "articleId": "voa-7998765",
+    "part": 2,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7998765-p3",
+    "source": "voa",
+    "title": "Wilbur and Orville Wright: The First Airplane (3/6)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7998765-p3.mp3",
+    "sentences": [
       {
         "en": "With these tests, they learned how to solve many problems."
       },
@@ -599,7 +1094,23 @@
       },
       {
         "en": "He was in the air for 12 seconds."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 81,
+    "addedAt": 1784381753945,
+    "articleId": "voa-7998765",
+    "part": 3,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7998765-p4",
+    "source": "voa",
+    "title": "Wilbur and Orville Wright: The First Airplane (4/6)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7998765-p4.mp3",
+    "sentences": [
       {
         "en": "The two brothers made three more flights that day."
       },
@@ -623,7 +1134,23 @@
       },
       {
         "en": "A French company agreed to begin making the Wright brothers' flying machine."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 68,
+    "addedAt": 1784381753945,
+    "articleId": "voa-7998765",
+    "part": 4,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7998765-p5",
+    "source": "voa",
+    "title": "Wilbur and Orville Wright: The First Airplane (5/6)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7998765-p5.mp3",
+    "sentences": [
       {
         "en": "Orville made successful flights in the United States at the time Wilbur was in France."
       },
@@ -647,7 +1174,23 @@
       },
       {
         "en": "Orville Wright continued designing and inventing until he died many years later, in 1948."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 81,
+    "addedAt": 1784381753945,
+    "articleId": "voa-7998765",
+    "part": 5,
+    "partCount": 6
+  },
+  {
+    "id": "voa-7998765-p6",
+    "source": "voa",
+    "title": "Wilbur and Orville Wright: The First Airplane (6/6)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7998765-p6.mp3",
+    "sentences": [
       {
         "en": "Today, the Wright brothers' first airplane is in the Air and Space Museum in Washington, D.C. Visitors to the museum can look at the Wright brothers' small plane."
       },
@@ -658,17 +1201,20 @@
         "en": "The world has changed a lot since Wilbur and Orville Wright began the modern age of flight over one hundred years ago."
       }
     ],
-    "durationSec": 267,
-    "wordCount": 446,
-    "addedAt": 1784381753945
+    "durationSec": 41,
+    "wordCount": 68,
+    "addedAt": 1784381753945,
+    "articleId": "voa-7998765",
+    "part": 6,
+    "partCount": 6
   },
   {
-    "id": "voa-7989189",
+    "id": "voa-7989189-p1",
     "source": "voa",
-    "title": "Methods for Protecting Earth against an Asteroid Strike",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (1/7)",
     "level": 2,
     "category": "Science & Technology",
-    "audioUrl": "materials/audio/voa-7989189.mp3",
+    "audioUrl": "materials/audio/voa-7989189-p1.mp3",
     "sentences": [
       {
         "en": "Astronomers following asteroid activity in space estimate there is a very small chance an object large enough to destroy a whole city could strike Earth in 2032."
@@ -678,7 +1224,23 @@
       },
       {
         "en": "The American space agency NASA recently estimated there was a 3.1 percent chance that asteroid 2024 YR4 would hit Earth on December 22, 2032."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 81,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 1,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7989189-p2",
+    "source": "voa",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (2/7)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7989189-p2.mp3",
+    "sentences": [
       {
         "en": "That is the highest probability predicted for such a large space rock in modern times."
       },
@@ -693,7 +1255,23 @@
       },
       {
         "en": "However, scientists say at a certain point the odds will likely drop down to zero."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 88,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 2,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7989189-p3",
+    "source": "voa",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (3/7)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7989189-p3.mp3",
+    "sentences": [
       {
         "en": "Moissl said he thinks it is important to remember that even in the unlikely event the probability keeps rising to 100 percent, the world is \"not defenseless.\""
       },
@@ -711,7 +1289,23 @@
       },
       {
         "en": "Bruce Betts is chief scientist for the nonprofit Planetary Society."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 97,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 3,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7989189-p4",
+    "source": "voa",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (4/7)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7989189-p4.mp3",
+    "sentences": [
       {
         "en": "He told AFP that space agencies could hit the 2024 YR4 asteroid with several spacecrafts, observing how each one changed the path."
       },
@@ -723,7 +1317,23 @@
       },
       {
         "en": "He said this is because if a spacecraft only partly destroys an asteroid, it could send smaller pieces of the space rock heading toward Earth."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 77,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 4,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7989189-p5",
+    "source": "voa",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (5/7)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7989189-p5.mp3",
+    "sentences": [
       {
         "en": "A separate idea would involve sending a large spacecraft to fly alongside a threatening asteroid."
       },
@@ -738,7 +1348,23 @@
       },
       {
         "en": "They believe this could increase the light the object reflects to make it slowly change course."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 86,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 5,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7989189-p6",
+    "source": "voa",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (6/7)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7989189-p6.mp3",
+    "sentences": [
       {
         "en": "One idea is to use a nuclear weapon against a threatening asteroid."
       },
@@ -753,7 +1379,23 @@
       },
       {
         "en": "A similar method – but one considered less dangerous – would involve shooting laser beams from a spacecraft to destroy the side of an asteroid in an effort to push it away from Earth."
-      },
+      }
+    ],
+    "durationSec": 47,
+    "wordCount": 101,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 6,
+    "partCount": 7
+  },
+  {
+    "id": "voa-7989189-p7",
+    "source": "voa",
+    "title": "Methods for Protecting Earth against an Asteroid Strike (7/7)",
+    "level": 2,
+    "category": "Science & Technology",
+    "audioUrl": "materials/audio/voa-7989189-p7.mp3",
+    "sentences": [
       {
         "en": "Moissl said that if all else fails, at least the world will have a good idea where a threatening asteroid would strike."
       },
@@ -767,17 +1409,20 @@
         "en": "He also noted that even with the rising odds involving 2024 YR4, there is still about a 97 percent chance the asteroid will miss Earth."
       }
     ],
-    "durationSec": 317,
-    "wordCount": 614,
-    "addedAt": 1784381758813
+    "durationSec": 48,
+    "wordCount": 84,
+    "addedAt": 1784381758813,
+    "articleId": "voa-7989189",
+    "part": 7,
+    "partCount": 7
   },
   {
-    "id": "voa-7504521",
+    "id": "voa-7504521-p1",
     "source": "voa",
-    "title": "'The Open Boat' by Stephen Crane, Part Two",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (1/18)",
     "level": 3,
     "category": "American Stories",
-    "audioUrl": "materials/audio/voa-7504521.mp3",
+    "audioUrl": "materials/audio/voa-7504521-p1.mp3",
     "sentences": [
       {
         "en": "We continue the story of “The Open Boat” by Stephen Crane."
@@ -802,7 +1447,23 @@
       },
       {
         "en": "For three days, the men steered the small boat through high waves along the coast of Florida."
-      },
+      }
+    ],
+    "durationSec": 47,
+    "wordCount": 91,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 1,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p2",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (2/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p2.mp3",
+    "sentences": [
       {
         "en": "At last, they saw land."
       },
@@ -826,7 +1487,23 @@
       },
       {
         "en": "The men thought someone on land would have seen the boat by now."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 78,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 2,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p3",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (3/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p3.mp3",
+    "sentences": [
       {
         "en": "“Well,” said the captain, “I suppose we’ll have to attempt to reach the shore ourselves."
       },
@@ -844,7 +1521,23 @@
       },
       {
         "en": "There was a great deal of anger in them."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 83,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 3,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p4",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (4/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p4.mp3",
+    "sentences": [
       {
         "en": "They thought: “If I am going to be drowned, why, in the name of the seven mad gods who rule the sea, was I permitted to come this far and think about sand and trees?”"
       },
@@ -859,7 +1552,23 @@
       },
       {
         "en": "The sailor said: “Boys, the boat won’t live three minutes more, and we’re too far out to swim."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 76,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 4,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p5",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (5/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p5.mp3",
+    "sentences": [
       {
         "en": "Shall I take her to sea again, captain?”"
       },
@@ -892,7 +1601,23 @@
       },
       {
         "en": "The man stopped walking."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 83,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 5,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p6",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (6/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p6.mp3",
+    "sentences": [
       {
         "en": "He moved his hand in the air to wave at them."
       },
@@ -919,7 +1644,23 @@
       },
       {
         "en": "A man stood on the steps of the bus and waved his coat over his head."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 93,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 6,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p7",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (7/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p7.mp3",
+    "sentences": [
       {
         "en": "The men in the boat wondered what he wanted to say."
       },
@@ -949,7 +1690,23 @@
       },
       {
         "en": "The sailor rowed, and then the reporter rowed, and then the sailor rowed again."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 73,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 7,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p8",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (8/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p8.mp3",
+    "sentences": [
       {
         "en": "They rowed and rowed through the long night."
       },
@@ -970,7 +1727,23 @@
       },
       {
         "en": "“Well,” said the cook, “I was just thinking about ham sandwiches, and …” A night on the sea in an open boat is a long night."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 83,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 8,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p9",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (9/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p9.mp3",
+    "sentences": [
       {
         "en": "The sailor continued to row until his head fell forward and sleep overpowered him."
       },
@@ -988,7 +1761,23 @@
       },
       {
         "en": "Suddenly, there was a long, loud swishing sound behind the boat and a shining trail of silvery blue."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 91,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 9,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p10",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (10/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p10.mp3",
+    "sentences": [
       {
         "en": "It might have been made by a huge knife."
       },
@@ -1006,7 +1795,23 @@
       },
       {
         "en": "The reporter wished the men would wake up."
-      },
+      }
+    ],
+    "durationSec": 41,
+    "wordCount": 65,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 10,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p11",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (11/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p11.mp3",
+    "sentences": [
       {
         "en": "He did not want to be alone with the shark."
       },
@@ -1027,7 +1832,23 @@
       },
       {
         "en": "Just before he died, he cried out: “I shall never see my own, my native land.”"
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 80,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 11,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p12",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (12/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p12.mp3",
+    "sentences": [
       {
         "en": "And now, many years after he had learned this poem, the reporter for the first time understood the sadness of the dying soldier."
       },
@@ -1045,7 +1866,23 @@
       },
       {
         "en": "And so they rowed, hour after hour, through the night."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 85,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 12,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p13",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (13/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p13.mp3",
+    "sentences": [
       {
         "en": "When day came, the four men saw land again."
       },
@@ -1066,7 +1903,23 @@
       },
       {
         "en": "They began to turn the boat toward the beach."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 74,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 13,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p14",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (14/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p14.mp3",
+    "sentences": [
       {
         "en": "The captain told them to be careful – that when the boat came near the beach, the waves would sink it."
       },
@@ -1090,7 +1943,23 @@
       },
       {
         "en": "But he swam toward the beach."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 92,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 14,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p15",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (15/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p15.mp3",
+    "sentences": [
       {
         "en": "He looked for his friends."
       },
@@ -1117,7 +1986,23 @@
       },
       {
         "en": "But the current suddenly changed and he was able to swim toward the shore."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 78,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 15,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p16",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (16/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p16.mp3",
+    "sentences": [
       {
         "en": "The captain called to him to swim to the boat and hold on."
       },
@@ -1135,7 +2020,23 @@
       },
       {
         "en": "When he tried to get up, he found that the water was not over his head, only half way up his body."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 87,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 16,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p17",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (17/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p17.mp3",
+    "sentences": [
       {
         "en": "But he was so tired that he could not stand up."
       },
@@ -1156,7 +2057,23 @@
       },
       {
         "en": "The man seized the reporter’s hand and pulled him to the beach."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 77,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 17,
+    "partCount": 18
+  },
+  {
+    "id": "voa-7504521-p18",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part Two (18/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-7504521-p18.mp3",
+    "sentences": [
       {
         "en": "Then the man pointed to the water and cried: “What’s that?”"
       },
@@ -1191,17 +2108,20 @@
         "en": "The wind brought the sound of the great sea’s voice to the men on the shore."
       }
     ],
-    "durationSec": 836,
-    "wordCount": 1514,
-    "addedAt": 1784381766357
+    "durationSec": 70,
+    "wordCount": 125,
+    "addedAt": 1784381766357,
+    "articleId": "voa-7504521",
+    "part": 18,
+    "partCount": 18
   },
   {
-    "id": "voa-2572601",
+    "id": "voa-2572601-p1",
     "source": "voa",
-    "title": "'The Open Boat' by Stephen Crane, Part One",
+    "title": "'The Open Boat' by Stephen Crane, Part One (1/18)",
     "level": 3,
     "category": "American Stories",
-    "audioUrl": "materials/audio/voa-2572601.mp3",
+    "audioUrl": "materials/audio/voa-2572601-p1.mp3",
     "sentences": [
       {
         "en": "Our story today is called “The Open Boat.”"
@@ -1226,7 +2146,23 @@
       },
       {
         "en": "There were three others with him: the ship’s captain, the cook, and a sailor."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 87,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 1,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p2",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (2/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p2.mp3",
+    "sentences": [
       {
         "en": "These four men climbed into the only remaining lifeboat."
       },
@@ -1244,7 +2180,23 @@
       },
       {
         "en": "Here is Shep O’Neal with the first part of the story."
-      },
+      }
+    ],
+    "durationSec": 41,
+    "wordCount": 64,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 2,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p3",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (3/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p3.mp3",
+    "sentences": [
       {
         "en": "The small lifeboat bounced from wave to wave in the rough seas of the Atlantic."
       },
@@ -1265,7 +2217,23 @@
       },
       {
         "en": "The men thought that most adults would need a bathtub larger than the boat they were sailing."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 80,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 3,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p4",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (4/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p4.mp3",
+    "sentences": [
       {
         "en": "The waves were huge, and each created a problem in guiding the direction of the boat."
       },
@@ -1283,7 +2251,23 @@
       },
       {
         "en": "The ship’s cook sat in the bottom of the boat."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 79,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 4,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p5",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (5/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p5.mp3",
+    "sentences": [
       {
         "en": "He kept looking at the fifteen centimeters which separated him from the ocean."
       },
@@ -1304,7 +2288,23 @@
       },
       {
         "en": "The fourth man was the captain of the ship that had sunk."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 76,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 5,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p6",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (6/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p6.mp3",
+    "sentences": [
       {
         "en": "He lay in the front of the small boat."
       },
@@ -1328,7 +2328,23 @@
       },
       {
         "en": "Sitting in the boat was like sitting on a wild horse."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 76,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 6,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p7",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (7/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p7.mp3",
+    "sentences": [
       {
         "en": "As each wave came, the boat rose and fell, like a horse starting toward a fence too high to jump."
       },
@@ -1343,7 +2359,23 @@
       },
       {
         "en": "In the weak light, the faces of the men must have looked gray."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 89,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 7,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p8",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (8/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p8.mp3",
+    "sentences": [
       {
         "en": "Their eyes must have shone in strange ways as they looked out at the sea."
       },
@@ -1361,7 +2393,23 @@
       },
       {
         "en": "As the boat dropped down again the water fell just past them."
-      },
+      }
+    ],
+    "durationSec": 50,
+    "wordCount": 90,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 8,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p9",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (9/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p9.mp3",
+    "sentences": [
       {
         "en": "The top of each wave was a hill, from which the men could see, for a brief period, a wide area of shining sea."
       },
@@ -1376,7 +2424,23 @@
       },
       {
         "en": "But the captain laughed in a way that expressed humor and tragedy all in one."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 72,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 9,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p10",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (10/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p10.mp3",
+    "sentences": [
       {
         "en": "He asked: “Do you think we’ve got much of a chance now, boys?”"
       },
@@ -1400,7 +2464,23 @@
       },
       {
         "en": "Seagulls flew near and far."
-      },
+      }
+    ],
+    "durationSec": 48,
+    "wordCount": 84,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 10,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p11",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (11/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p11.mp3",
+    "sentences": [
       {
         "en": "Sometimes the birds sat down on the sea in groups, near brown seaweed that rolled on the waves."
       },
@@ -1415,7 +2495,23 @@
       },
       {
         "en": "The sailor and the reporter kept rowing with the thin wooden oars."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 80,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 11,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p12",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (12/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p12.mp3",
+    "sentences": [
       {
         "en": "Sometimes they sat together, each using an oar."
       },
@@ -1439,7 +2535,23 @@
       },
       {
         "en": "He said that he saw the lighthouse at Mosquito Inlet."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 85,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 12,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p13",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (13/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p13.mp3",
+    "sentences": [
       {
         "en": "The cook also said he saw it."
       },
@@ -1469,7 +2581,23 @@
       },
       {
         "en": "“Think we’ll make it, captain?” he asked."
-      },
+      }
+    ],
+    "durationSec": 44,
+    "wordCount": 70,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 13,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p14",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (14/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p14.mp3",
+    "sentences": [
       {
         "en": "“If this wind holds and the boat doesn’t flood, we can’t do much else,” said the captain."
       },
@@ -1493,7 +2621,23 @@
       },
       {
         "en": "He was a good leader."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 81,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 14,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p15",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (15/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p15.mp3",
+    "sentences": [
       {
         "en": "He always spoke in a low voice and calmly."
       },
@@ -1511,7 +2655,23 @@
       },
       {
         "en": "Slowly, the land seemed to rise from the sea."
-      },
+      }
+    ],
+    "durationSec": 43,
+    "wordCount": 79,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 15,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p16",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (16/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p16.mp3",
+    "sentences": [
       {
         "en": "Soon, the men could see two lines, one black and one white."
       },
@@ -1535,7 +2695,23 @@
       },
       {
         "en": "The wind came again."
-      },
+      }
+    ],
+    "durationSec": 45,
+    "wordCount": 78,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 16,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p17",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (17/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p17.mp3",
+    "sentences": [
       {
         "en": "Finally, the men heard a new sound – the sound of waves breaking and crashing on the shore."
       },
@@ -1562,7 +2738,23 @@
       },
       {
         "en": "They were used to balancing in the boat."
-      },
+      }
+    ],
+    "durationSec": 46,
+    "wordCount": 83,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 17,
+    "partCount": 18
+  },
+  {
+    "id": "voa-2572601-p18",
+    "source": "voa",
+    "title": "'The Open Boat' by Stephen Crane, Part One (18/18)",
+    "level": 3,
+    "category": "American Stories",
+    "audioUrl": "materials/audio/voa-2572601-p18.mp3",
+    "sentences": [
       {
         "en": "Now they rode this wild horse of a boat like circus men."
       },
@@ -1594,8 +2786,11 @@
         "en": "Please come back next week for the second and final part of this story."
       }
     ],
-    "durationSec": 825,
-    "wordCount": 1457,
-    "addedAt": 1784381769291
+    "durationSec": 60,
+    "wordCount": 104,
+    "addedAt": 1784381769291,
+    "articleId": "voa-2572601",
+    "part": 18,
+    "partCount": 18
   }
 ]

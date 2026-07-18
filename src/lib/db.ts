@@ -9,17 +9,21 @@ export interface Sentence {
 
 // store: materials（教材メタ。音声本体は bundled=URL参照 / local=audioBlob保存）
 export interface Material {
-  id: string; // bundled: "voa-xxxx", local: "local-" + crypto.randomUUID()
+  id: string; // bundled: "voa-<記事ID>-p<part>" (例 voa-8002695-p1), local: "local-" + crypto.randomUUID()
   source: 'voa' | 'local';
   title: string;
   level: 1 | 2 | 3 | 0; // VOAレベル。0=不明(ローカル)
   category: string; // 例 "As It Is", "Local"
-  audioUrl?: string; // bundled: base相対 "materials/audio/xxx.mp3"
+  audioUrl?: string; // bundled: base相対 "materials/audio/xxx.mp3"（セクションごとに独立したmp3）
   audioBlob?: Blob; // local のみ
-  sentences: Sentence[]; // 文分割済みスクリプト
+  sentences: Sentence[]; // このセクションに割り当てられた文
   durationSec?: number;
   wordCount: number;
   addedAt: number; // epoch ms
+  // ---- セクション分割（M4）----
+  articleId?: string; // 元記事のグループキー（例 "voa-8002695"）。ライブラリで同一記事をまとめて表示
+  part?: number; // 1始まりのセクション番号
+  partCount?: number; // 記事内の総セクション数
 }
 
 // store: sessions（練習1回=1レコード。回数カウントの元データ）
@@ -298,9 +302,11 @@ function isValidBundledMaterial(item: unknown): item is Material {
  * アプリ起動時に `materials/index.json`（VOAバンドル教材のメタ情報。fetch-voa.mjsが生成）を
  * 取得し、IndexedDBのbundled教材(source: 'voa')を同期する。
  *
- * DESIGN.md §7末尾: 「追加・更新のみ、削除はしない」。既存のローカル取り込み教材(source:
- * 'local')には一切触れない。オフライン等でfetchに失敗しても例外を投げず、既存DBのまま
- * 動作を継続する。
+ * DESIGN.md §7末尾: 追加・更新に加え、**indexから消えたbundled教材はIndexedDBからも削除**する
+ * （§7bでセクション分割に伴い記事の再分割・差し替えが起こるため）。既存のローカル取り込み教材
+ * (source: 'local')には一切触れない。削除されたbundled教材のmaterialProgress/submissionsは
+ * 履歴として残す（明示的には削除しない）。オフライン等でfetchに失敗しても例外を投げず、既存DB
+ * のまま動作を継続する。
  *
  * @param baseUrl `import.meta.env.BASE_URL` を渡す（末尾スラッシュ付き想定）。
  */
@@ -311,11 +317,18 @@ export async function syncBundledMaterials(baseUrl: string): Promise<void> {
     const data: unknown = await res.json();
     if (!Array.isArray(data)) return;
 
+    const validItems = data.filter(isValidBundledMaterial);
+    const indexIds = new Set(validItems.map((item) => item.id));
+
     const db = await getDB();
     const tx = db.transaction('materials', 'readwrite');
-    for (const item of data) {
-      if (isValidBundledMaterial(item)) {
-        await tx.store.put(item);
+    const existingBundled = await tx.store.index('by-source').getAllKeys('voa');
+    for (const item of validItems) {
+      await tx.store.put(item);
+    }
+    for (const key of existingBundled) {
+      if (!indexIds.has(key as string)) {
+        await tx.store.delete(key);
       }
     }
     await tx.done;

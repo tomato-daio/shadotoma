@@ -41,17 +41,21 @@
 ```ts
 // store: materials（教材メタ。音声本体は bundled=URL参照 / local=audioBlob保存）
 interface Material {
-  id: string;                 // bundled: "voa-xxxx", local: "local-" + crypto.randomUUID()
+  id: string;                 // bundled: "voa-<記事ID>-p<part>" (例 voa-8002695-p1), local: "local-" + crypto.randomUUID()
   source: 'voa' | 'local';
-  title: string;
+  title: string;              // 表示名。分割教材は「元記事タイトル (part/partCount)」
   level: 1 | 2 | 3 | 0;       // VOAレベル。0=不明(ローカル)
   category: string;           // 例 "As It Is", "Local"
-  audioUrl?: string;          // bundled: base相対 "materials/audio/xxx.mp3"
+  audioUrl?: string;          // bundled: base相対 "materials/audio/xxx.mp3"（セクションごとに独立したmp3）
   audioBlob?: Blob;           // local のみ
-  sentences: { en: string; ja?: string }[];  // 文分割済みスクリプト
+  sentences: { en: string; ja?: string }[];  // このセクションに割り当てられた文
   durationSec?: number;
   wordCount: number;
   addedAt: number;            // epoch ms
+  // ---- セクション分割（M4）----
+  articleId?: string;         // 元記事のグループキー（例 "voa-8002695"）。ライブラリで同一記事をまとめて表示
+  part?: number;              // 1始まりのセクション番号
+  partCount?: number;         // 記事内の総セクション数
 }
 
 // store: sessions（練習1回=1レコード。回数カウントの元データ）
@@ -104,8 +108,9 @@ interface MaterialProgress {
 
 練習画面はステップウィザード。教材の `MaterialProgress.daysPracticed.length`（何日目か）で推奨ステップを変える:
 
-- **1日目**: ①リスニング（スクリプト非表示、3回聴く）→ ②スクリプト確認（英文+和訳表示、意味理解）→ ③オーバーラッピング（スクリプト表示のまま音声と同時発話、目安10回）
-- **2〜4日目**: ④シャドーイング（スクリプト非表示で音声を追いかけて発話、目安15回）→ ⑤録音・提出
+- **1日目**: ①リスニング（スクリプト非表示、3回聴く）→ ②スクリプト確認（英文+和訳表示、意味理解）→ ③オーバーラッピング（スクリプト表示のまま音声と同時発話、目安10回）→ ④録音・提出
+- **2〜4日目**: ①シャドーイング（スクリプト非表示で音声を追いかけて発話、目安15回）→ ②録音・提出
+- **録音・提出は毎日ステップの最後に必ず置く**（シャドテン同様、1日目から毎日提出できる。M4で修正済みの仕様）
 - 4日目終了時（または matchRate ≥ 0.85 のとき）「次の教材へ進みましょう」を提案（マンネリ防止）
 
 ステップはあくまでガイド。ユーザーは自由にスキップ/戻り可能。ループ再生完了ごとに回数を自動カウントし「10回中3回」のように表示。
@@ -140,7 +145,17 @@ interface MaterialProgress {
 - 出力: `public/materials/index.json`（Material[] のメタ、audioUrlは相対パス）+ `public/materials/audio/*.mp3`
 - 実行例: `npm run fetch-voa -- --level 1 --count 5`。既存index.jsonへ追記（重複URLはスキップ）
 - 記事下部の定型文（"I'm Dan Friedell." 等の署名、Words in This Story等）はスクリプトから除外してよいが、除外しすぎに注意
-- アプリ起動時に `materials/index.json` をfetchしIndexedDBのbundled教材を同期（追加・更新のみ、削除はしない）
+- アプリ起動時に `materials/index.json` をfetchしIndexedDBのbundled教材を同期（追加・更新に加え、**indexから消えたbundled教材はIndexedDBからも削除**する。source:'local'の教材は決して消さない）
+
+### 7b. 教材のセクション分割（M4）
+
+シャドテンと同じく**1練習単位＝30〜60秒**にするため、fetch-voaは記事を「セクション」に分割して出力する:
+
+- ffmpeg（PCにインストール済みの前提。無ければエラーで案内）の `silencedetect`（例: -35dB / 0.3秒以上）で無音区間を検出し、無音位置だけで切る
+- 目標45秒・範囲30〜60秒（上限75秒）でセクション境界を選ぶ。15秒未満の端切れは隣とマージ
+- 各セクションは `ffmpeg -ss/-to`（copy優先）で独立したmp3に切り出し `audio/<記事ID>-p<n>.mp3` として保存
+- 文の割り当て: 記事全体の語数比で各文の推定時刻を出し、文の中点が入るセクションに割り当てる（全文を漏れなく1回ずつ・順序維持）。無音＝文境界に近いVOAの読み上げ特性を利用した近似
+- index.jsonには分割後のセクションのみを載せる（元の長尺教材は載せない）。id/articleId/part/partCountは§3の通り
 
 ## 8. 添削エンジン（M3）
 

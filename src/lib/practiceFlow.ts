@@ -50,6 +50,15 @@ const DAY1_STEPS: WizardStepConfig[] = [
     initialScriptVisible: true,
     loopTarget: 10,
   },
+  {
+    key: 'submit',
+    step: 'overlapping',
+    kind: 'recorder',
+    label: '④ 録音・提出',
+    instruction: '録音してお手本と聴き比べ、提出しましょう。',
+    initialScriptVisible: false,
+    loopTarget: null,
+  },
 ];
 
 const DAY2_4_STEPS: WizardStepConfig[] = [
@@ -57,7 +66,7 @@ const DAY2_4_STEPS: WizardStepConfig[] = [
     key: 'shadowing',
     step: 'shadowing',
     kind: 'player',
-    label: '④ シャドーイング',
+    label: '① シャドーイング',
     instruction: 'スクリプトを見ずに、音声を追いかけて声に出しましょう。',
     initialScriptVisible: false,
     loopTarget: 15,
@@ -66,7 +75,7 @@ const DAY2_4_STEPS: WizardStepConfig[] = [
     key: 'submit',
     step: 'shadowing',
     kind: 'recorder',
-    label: '⑤ 録音・提出',
+    label: '② 録音・提出',
     instruction: '録音してお手本と聴き比べ、提出しましょう。',
     initialScriptVisible: false,
     loopTarget: null,
