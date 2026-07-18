@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { PlayerUI } from '../features/player/PlayerUI';
-import { RecorderUI } from '../features/recorder/RecorderUI';
+import { PracticeWizard } from '../features/practice/PracticeWizard';
 import { SubmissionHistory } from '../features/recorder/SubmissionHistory';
 import { addSubmission, getMaterial, newId, type Material } from '../lib/db';
 import { learningDate } from '../lib/dates';
@@ -89,10 +88,12 @@ export function PracticePage() {
       </header>
 
       {audioSrc ? (
-        <>
-          <PlayerUI src={audioSrc} sentences={material.sentences} />
-          <RecorderUI referenceSrc={audioSrc} onSubmit={handleSubmit} />
-        </>
+        <PracticeWizard
+          material={material}
+          audioSrc={audioSrc}
+          onSubmit={handleSubmit}
+          onGoToMaterials={() => navigate('/materials')}
+        />
       ) : (
         <p className="text-sm text-red-600">音声を読み込めませんでした</p>
       )}

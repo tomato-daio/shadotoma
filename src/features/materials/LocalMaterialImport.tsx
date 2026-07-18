@@ -1,32 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { countWords, loadAudioDuration } from '../../lib/audio';
-import { newId, putMaterial, type Material, type Sentence } from '../../lib/db';
+import { newId, putMaterial, type Material } from '../../lib/db';
+import { sentencesFromText } from '../../lib/sentences';
 
 export interface LocalMaterialImportProps {
   onCreated: (material: Material) => void;
   onCancel: () => void;
-}
-
-/**
- * 簡易的な文分割。正式な実装は M2 の `src/lib/sentences.ts`（略語考慮・Vitestテスト付き）で行う。
- * ここでは開発確認用の一時教材作成のためだけに使う。
- */
-function naiveSplitSentences(raw: string): Sentence[] {
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  if (lines.length > 1) {
-    return lines.map((en) => ({ en }));
-  }
-
-  const bySentence = raw
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  return bySentence.length > 0 ? bySentence.map((en) => ({ en })) : [{ en: raw.trim() }];
 }
 
 export function LocalMaterialImport({ onCreated, onCancel }: LocalMaterialImportProps) {
@@ -53,7 +32,7 @@ export function LocalMaterialImport({ onCreated, onCancel }: LocalMaterialImport
     setError(null);
     try {
       const durationSec = await loadAudioDuration(file).catch(() => undefined);
-      const sentences = naiveSplitSentences(script);
+      const sentences = sentencesFromText(script);
       const material: Material = {
         id: newId('local'),
         source: 'local',
@@ -80,7 +59,10 @@ export function LocalMaterialImport({ onCreated, onCancel }: LocalMaterialImport
       onSubmit={(e) => void handleSubmit(e)}
       className="flex flex-col gap-3 rounded-lg border border-tomato-200 bg-tomato-50/40 p-4"
     >
-      <p className="text-sm font-medium text-tomato-700">音声ファイルを開く（開発確認用の一時教材）</p>
+      <p className="text-sm font-medium text-tomato-700">ローカル教材を追加</p>
+      <p className="text-xs text-neutral-500">
+        音声ファイルとスクリプトはこの端末のIndexedDBにのみ保存され、外部へは送信されません。
+      </p>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-neutral-600">音声ファイル</span>
@@ -129,7 +111,7 @@ export function LocalMaterialImport({ onCreated, onCancel }: LocalMaterialImport
           disabled={busy}
           className="flex-1 rounded-md bg-tomato-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {busy ? '作成中…' : '開く'}
+          {busy ? '追加中…' : '追加する'}
         </button>
       </div>
     </form>

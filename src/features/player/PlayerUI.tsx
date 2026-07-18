@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatTime } from '../../lib/audio';
 import type { Sentence } from '../../lib/db';
 import { RATE_MAX, RATE_MIN, RATE_PRESETS, RATE_STEP } from './AudioPlayer';
@@ -9,20 +9,37 @@ export interface PlayerUIProps {
   sentences: Sentence[];
   /** スクリプトの初期表示状態（ステップに応じて呼び出し側から指定できる）。 */
   initialScriptVisible?: boolean;
+  /** ループ回数の目安（例: オーバーラッピング10回）。指定時は「3 / 10回」のように表示する。 */
+  loopTarget?: number | null;
+  /** ループ完了回数が変化するたびに呼び出す（ウィザード側でステップ完了時の回数を記録するため）。 */
+  onLoopCountChange?: (count: number) => void;
   className?: string;
 }
 
-export function PlayerUI({ src, sentences, initialScriptVisible = true, className = '' }: PlayerUIProps) {
+export function PlayerUI({
+  src,
+  sentences,
+  initialScriptVisible = true,
+  loopTarget = null,
+  onLoopCountChange,
+  className = '',
+}: PlayerUIProps) {
   const player = usePlayer(src);
   const [scriptVisible, setScriptVisible] = useState(initialScriptVisible);
 
   const { a, b } = player.abPoints;
 
+  useEffect(() => {
+    onLoopCountChange?.(player.loopCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.loopCount]);
+
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-tomato-700">
-          ループ再生: {player.loopCount}回
+          ループ再生: {player.loopCount}
+          {loopTarget ? ` / ${loopTarget}` : ''}回
         </span>
         <button
           type="button"

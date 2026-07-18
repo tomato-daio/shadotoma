@@ -215,6 +215,11 @@ export async function putMaterialProgress(progress: MaterialProgress): Promise<v
   await db.put('materialProgress', progress);
 }
 
+export async function getAllMaterialProgress(): Promise<MaterialProgress[]> {
+  const db = await getDB();
+  return db.getAll('materialProgress');
+}
+
 /**
  * 練習セッション実施時にmaterialProgressを更新する（無ければ新規作成）。
  * daysPracticedはユニークな日付のみ保持し、loopsは加算する。
@@ -267,4 +272,47 @@ export async function getAppState<T extends AppStateValue = AppStateValue>(
 export async function setAppState(key: string, value: AppStateValue): Promise<void> {
   const db = await getDB();
   await db.put('appState', { key, value });
+}
+
+// ---- bundled材料の同期 ----
+
+function isValidBundledMaterial(item: unknown): item is Material {
+  if (!item || typeof item !== 'object') return false;
+  const m = item as Record<string, unknown>;
+  return (
+    typeof m.id === 'string' &&
+    typeof m.title === 'string' &&
+    m.source === 'voa' &&
+    Array.isArray(m.sentences)
+  );
+}
+
+/**
+ * アプリ起動時に `materials/index.json`（VOAバンドル教材のメタ情報。fetch-voa.mjsが生成）を
+ * 取得し、IndexedDBのbundled教材(source: 'voa')を同期する。
+ *
+ * DESIGN.md §7末尾: 「追加・更新のみ、削除はしない」。既存のローカル取り込み教材(source:
+ * 'local')には一切触れない。オフライン等でfetchに失敗しても例外を投げず、既存DBのまま
+ * 動作を継続する。
+ *
+ * @param baseUrl `import.meta.env.BASE_URL` を渡す（末尾スラッシュ付き想定）。
+ */
+export async function syncBundledMaterials(baseUrl: string): Promise<void> {
+  try {
+    const res = await fetch(`${baseUrl}materials/index.json`);
+    if (!res.ok) return;
+    const data: unknown = await res.json();
+    if (!Array.isArray(data)) return;
+
+    const db = await getDB();
+    const tx = db.transaction('materials', 'readwrite');
+    for (const item of data) {
+      if (isValidBundledMaterial(item)) {
+        await tx.store.put(item);
+      }
+    }
+    await tx.done;
+  } catch {
+    // オフライン・fetch失敗時は何もせず既存DBのまま継続する。
+  }
 }
