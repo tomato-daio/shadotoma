@@ -1,6 +1,6 @@
 # シャドとま (Shadotoma) — 設計書
 
-シャドテン風の英語シャドーイング練習PWA。**個人利用・ランニングコスト0円・iPhone完結**が絶対条件。
+英語シャドーイング練習PWA。**個人利用・ランニングコスト0円・iPhone完結**が絶対条件。
 この文書が実装の正本。実装エージェントはこの仕様に従うこと。
 
 ## 0. 絶対ルール
@@ -100,7 +100,7 @@ interface MaterialProgress {
 
 日付ユーティリティ `src/lib/dates.ts` : `learningDate(now: Date): string`（午前3時切替）、連続日数計算 `calcStreak(dates: string[], today: string): number`。**純関数にしてVitestでテスト**。
 
-## 4. 練習フロー仕様（シャドテン式）
+## 4. 練習フロー仕様（段階式シャドーイング）
 
 練習画面はステップウィザード。教材の `MaterialProgress.daysPracticed.length`（何日目か）で推奨ステップを変える:
 
