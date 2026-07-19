@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { buildFallbackPrompt, copyTextToClipboard } from '../features/judge/clipboardFallback';
 import { runJudge } from '../features/judge/runJudge';
@@ -17,6 +17,7 @@ import {
 } from '../lib/db';
 import { learningDate } from '../lib/dates';
 import { NEXT_MATERIAL_SUGGEST_MATCH_RATE } from '../lib/practiceFlow';
+import { createWakeLockController, type WakeLockController } from '../lib/wakeLock';
 
 export function PracticePage() {
   const { materialId } = useParams<{ materialId: string }>();
@@ -34,6 +35,16 @@ export function PracticePage() {
   const [previousMatchRate, setPreviousMatchRate] = useState<number | undefined>(undefined);
   const [fallbackCopied, setFallbackCopied] = useState(false);
   const [fallbackSituation, setFallbackSituation] = useState('');
+
+  // 画面スリープ防止（DESIGN.md §6 M11）: 添削処理中（handleSubmit開始〜judge完了/失敗）に保持する。
+  const wakeLockRef = useRef<WakeLockController | null>(null);
+  useEffect(() => {
+    wakeLockRef.current = createWakeLockController();
+    return () => {
+      wakeLockRef.current?.dispose();
+      wakeLockRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!materialId) return;
@@ -105,6 +116,8 @@ export function PracticePage() {
     setLastJudge(null);
     setLastTranscript(undefined);
     setFallbackCopied(false);
+    // 画面スリープ防止（DESIGN.md §6 M11）: 添削処理中は画面ロックで処理が中断されないよう保持する。
+    void wakeLockRef.current?.acquire();
 
     try {
       const [previousSubs, recordingDurationSec] = await Promise.all([
@@ -147,6 +160,9 @@ export function PracticePage() {
       setFallbackSituation(`Whisperによる添削の自動実行に失敗しました（${message}）。録音は保存済みです。`);
       setRefreshKey((k) => k + 1);
       return undefined;
+    } finally {
+      // 画面スリープ防止（DESIGN.md §6 M11）: judge完了・失敗のどちらでも解放する。
+      wakeLockRef.current?.release();
     }
   };
 

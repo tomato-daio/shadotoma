@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pickRecorderMimeType } from '../../lib/audio';
+import { createWakeLockController, type WakeLockController } from '../../lib/wakeLock';
 import { AudioPlayer, DEFAULT_RATE } from '../player/AudioPlayer';
 
 export interface UseRecorderResult {
@@ -68,6 +69,8 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
   const disposedRef = useRef(false);
   /** trueの間はマイクがOSに停止/ミュートされた後始末中。MediaRecorderのonstopが自動発火しても録音結果を確定させない。 */
   const abortedRef = useRef(false);
+  /** 画面スリープ防止（DESIGN.md §6 M11）。録音中はロックを保持し、停止/リセット/アンマウント/エラーで解放する。 */
+  const wakeLockRef = useRef<WakeLockController | null>(null);
 
   /** お手本の自動再生を停止し、リソースを解放する（音が残るリークを防ぐ）。 */
   const destroyReference = useCallback(() => {
@@ -121,10 +124,14 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
 
   useEffect(() => {
     disposedRef.current = false;
+    wakeLockRef.current = createWakeLockController();
     return () => {
       disposedRef.current = true;
       cleanupStream();
       destroyReference();
+      // 画面スリープ防止（DESIGN.md §6 M11）: アンマウント時は必ず解放する。
+      wakeLockRef.current?.dispose();
+      wakeLockRef.current = null;
     };
   }, [cleanupStream, destroyReference]);
 
@@ -164,6 +171,8 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     }
     cleanupStream();
     destroyReference();
+    // 画面スリープ防止（DESIGN.md §6 M11）: マイクのOS強制終了もエラー扱いとして解放する。
+    wakeLockRef.current?.release();
     setIsRecording(false);
     setError('マイクがOSに停止されました。もう一度録音開始を押してください');
   }, [cleanupStream, destroyReference]);
@@ -278,6 +287,8 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
       // 4. MediaRecorder.start()
       recorder.start();
       setIsRecording(true);
+      // 画面スリープ防止（DESIGN.md §6 M11）: 録音中は画面ロックで録音が中断されないよう保持する。
+      void wakeLockRef.current?.acquire();
 
       // 5. お手本をAudioContext経由で先頭から再生
       if (referenceSrc) {
@@ -308,6 +319,8 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
       cleanupStream();
       // マイク許可が下りなかった場合など、start失敗時はお手本だけ流れ続けないよう同時に停止する
       destroyReference();
+      // 画面スリープ防止（DESIGN.md §6 M11）: start失敗時も念のため解放する（未取得なら何もしない）。
+      wakeLockRef.current?.release();
       setIsRecording(false);
     } finally {
       busyRef.current = false;
@@ -319,6 +332,8 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     setIsRecording(false);
     cleanupStream();
     destroyReference();
+    // 画面スリープ防止（DESIGN.md §6 M11）: ユーザーの停止操作で解放する。
+    wakeLockRef.current?.release();
   }, [cleanupStream, destroyReference]);
 
   const reset = useCallback(() => {
@@ -330,6 +345,8 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     setReferenceCurrentTime(0);
     setReferenceDuration(0);
     destroyReference();
+    // 画面スリープ防止（DESIGN.md §6 M11）: 通常はstop()済みで解放済みだが、念のため冪等に呼ぶ。
+    wakeLockRef.current?.release();
   }, [destroyReference]);
 
   const setRate = useCallback((next: number) => {
