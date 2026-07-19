@@ -5,6 +5,10 @@
  * matchRate/WPM算出 → Good/Development Point生成、までを一気通貫で行う。
  * 失敗時（モデルDL/実行エラー）は例外をそのまま投げるので、呼び出し側でフォールバックUI
  * （clipboardFallback.ts）に切り替える。
+ *
+ * Azure発音評価（DESIGN.md §8c・M9・任意機能）: appStateにAzureキーが設定されている場合のみ、
+ * Whisper採点の後に追加で実行する。完全に付加的な機能のため、失敗しても例外を外へ投げず
+ * judge.azureErrorに一行メッセージを残すだけで、Whisper採点の結果には一切影響させない。
  */
 
 import { alignWords, buildScriptWords } from '../../lib/align';
@@ -12,8 +16,22 @@ import { decodeToMono16k } from '../../lib/audio';
 import type { JudgeResult, Sentence } from '../../lib/db';
 import { computeMatchRate, computeWpm, generateFeedback } from '../../lib/feedback';
 import { comparePreviousIssues, detectPhenomena, type PhenomenonIssue } from '../../lib/phenomena';
-import { transcribeAudio, type WhisperProgressCallback } from './whisper';
+import { describeAzureError, runAzurePronunciationAssessment } from './azurePronunciation';
+import { getAzureSpeechKey, getAzureSpeechRegion } from './azureSpeechConfig';
+import { transcribeAudio } from './whisper';
+import type { WhisperProgressPhase } from './whisper.protocol';
 import { getSelectedWhisperModelKey, whisperModelIdFor } from './whisperModels';
+
+/** Whisperの進捗フェーズに「発音スコア取得中…」（Azure）を加えた、判定処理全体の進捗フェーズ。 */
+export type JudgeProgressPhase = WhisperProgressPhase | 'azure-scoring';
+
+export interface JudgeProgressEvent {
+  phase: JudgeProgressPhase;
+  /** model-downloadの場合のみ、0〜1のおおよその進捗。 */
+  progress?: number;
+}
+
+export type JudgeProgressCallback = (event: JudgeProgressEvent) => void;
 
 export interface RunJudgeParams {
   audioBlob: Blob;
@@ -26,7 +44,7 @@ export interface RunJudgeParams {
   previousMatchRate?: number;
   /** 同一教材の前回提出（judge付き最新）のissues。指定時のみ前回比較を行う（DESIGN.md §8 5b）。 */
   previousIssues?: PhenomenonIssue[];
-  onProgress?: WhisperProgressCallback;
+  onProgress?: JudgeProgressCallback;
 }
 
 export interface RunJudgeOutput {
@@ -38,7 +56,16 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
   const { audioBlob, sentences, recordingDurationSec, referenceDurationSec, previousMatchRate, previousIssues, onProgress } =
     params;
 
-  const pcm = await decodeToMono16k(audioBlob);
+  const [pcm, azureKey, azureRegion] = await Promise.all([
+    decodeToMono16k(audioBlob),
+    getAzureSpeechKey(),
+    getAzureSpeechRegion(),
+  ]);
+  const azureEnabled = Boolean(azureKey) && sentences.length > 0;
+  // transcribeAudio は pcm.buffer を transferable で worker へ渡し、呼び出し後にpcmを
+  // 再利用できなくする（whisper.ts参照）。Azure採点でも同じPCMを使うため、渡す前に複製する。
+  const pcmForAzure = azureEnabled ? pcm.slice() : null;
+
   // M8: 設定ページで選択したモデル（appState 'whisperModel'）を毎回解決して使う。
   // 切替後の最初の判定からワーカー内でパイプラインが再構築され、新モデルが反映される。
   const modelKey = await getSelectedWhisperModelKey();
@@ -84,6 +111,24 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
     issues,
     previousIssueOutcomes,
   };
+
+  // Azure発音評価（DESIGN.md §8c）: キーが設定されている場合のみ、Whisper採点の後に追加実行する。
+  // ここで投げられる例外は握りつぶし、judge.azureErrorへ一行メッセージを残すのみに留める
+  // （Whisper採点はここまでで完了しており、Azureの成否によって変化しない）。
+  if (azureEnabled && pcmForAzure && azureKey) {
+    onProgress?.({ phase: 'azure-scoring' });
+    try {
+      const referenceText = sentences.map((s) => s.en).join(' ');
+      judge.azure = await runAzurePronunciationAssessment({
+        pcm: pcmForAzure,
+        referenceText,
+        apiKey: azureKey,
+        region: azureRegion,
+      });
+    } catch (err) {
+      judge.azureError = describeAzureError(err);
+    }
+  }
 
   return { transcript, judge };
 }

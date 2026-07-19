@@ -46,6 +46,26 @@ export interface WordMark {
   recognized?: string;
 }
 
+// ---- Azure発音評価（M9・任意機能・DESIGN.md §8c）----
+
+/** 発音評価における単語1つぶんのスコア（Azure Speechの応答をそのまま反映）。 */
+export interface AzureWordScore {
+  word: string;
+  accuracyScore: number; // 0-100
+  /** Azureが返すエラー種別をそのまま保持する（例: 'None' | 'Omission' | 'Insertion' | 'Mispronunciation' 等）。 */
+  errorType?: string;
+}
+
+/** Azure発音評価の統合結果（複数フレーズ結果を音声長加重で統合済み）。 */
+export interface AzurePronunciationResult {
+  pronScore: number; // 総合 0-100
+  accuracyScore: number; // 正確さ 0-100
+  fluencyScore: number; // 流暢さ 0-100
+  prosodyScore: number; // 韻律 0-100
+  completenessScore: number; // 完全性 0-100
+  words: AzureWordScore[];
+}
+
 // JudgeResult（M3で実装。型だけ先に定義）
 export interface JudgeResult {
   matchRate: number; // 0-1
@@ -58,6 +78,11 @@ export interface JudgeResult {
   // 既存データ（issuesを持たないJudgeResult）はoptionalのため後方互換。
   issues?: PhenomenonIssue[]; // Development Pointの根拠にした音声現象（優先度順・最大3件）
   previousIssueOutcomes?: PreviousIssueOutcome[]; // 前回提出issuesの改善判定（前回提出が無い/issues無しなら未設定）
+  // ---- Azure発音評価（M9・DESIGN.md §8c。完全に付加的な任意機能）----
+  // キー未設定時・失敗時はどちらもundefinedのまま。既存データ・Whisper採点には一切影響しない。
+  azure?: AzurePronunciationResult;
+  /** azure採点が失敗した場合の一行エラーメッセージ（表示用。成功時・未実行時はundefined）。 */
+  azureError?: string;
 }
 
 // store: submissions（提出=録音+添削結果）

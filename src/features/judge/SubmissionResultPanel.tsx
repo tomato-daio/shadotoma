@@ -1,7 +1,7 @@
 import type { JudgeResult } from '../../lib/db';
 import { JudgeResultView } from './JudgeResultView';
 
-export type JudgeRunStatus = 'idle' | 'model-download' | 'transcribing' | 'done' | 'error';
+export type JudgeRunStatus = 'idle' | 'model-download' | 'transcribing' | 'azure-scoring' | 'done' | 'error';
 
 export interface SubmissionResultPanelProps {
   status: JudgeRunStatus;
@@ -17,9 +17,12 @@ export interface SubmissionResultPanelProps {
   className?: string;
 }
 
-const STATUS_LABEL: Record<'model-download' | 'transcribing', string> = {
+const STATUS_LABEL: Record<'model-download' | 'transcribing' | 'azure-scoring', string> = {
   'model-download': 'AIモデルをダウンロード中…（初回のみ・数十MB）',
   transcribing: '文字起こし中…',
+  // Azure発音評価（DESIGN.md §8c・M9）: appStateにキーが設定されている場合のみ、
+  // Whisper採点の後にこのフェーズへ進む。
+  'azure-scoring': '発音スコア取得中…',
 };
 
 /**
@@ -39,7 +42,7 @@ export function SubmissionResultPanel({
 }: SubmissionResultPanelProps) {
   if (status === 'idle') return null;
 
-  if (status === 'model-download' || status === 'transcribing') {
+  if (status === 'model-download' || status === 'transcribing' || status === 'azure-scoring') {
     return (
       <div className={`flex flex-col gap-2 rounded-lg border border-neutral-200 p-4 text-center ${className}`}>
         <p className="text-sm text-neutral-600">{STATUS_LABEL[status]}</p>

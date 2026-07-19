@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { WordMark } from '../../lib/align';
-import type { JudgeResult } from '../../lib/db';
+import type { AzurePronunciationResult, AzureWordScore, JudgeResult } from '../../lib/db';
 import type { PhenomenonType, PreviousIssueOutcome } from '../../lib/phenomena';
+import { worstWords } from './azurePronunciation';
 
 export interface JudgeResultViewProps {
   judge: JudgeResult;
@@ -40,6 +41,12 @@ export function JudgeResultView({ judge, previousMatchRate, transcript, classNam
         >
           前回比 {deltaPercent >= 0 ? `+${deltaPercent}` : deltaPercent}pt
         </p>
+      ) : null}
+
+      {judge.azure ? (
+        <AzureScoreCard azure={judge.azure} />
+      ) : judge.azureError ? (
+        <AzureErrorNotice message={judge.azureError} />
       ) : null}
 
       <section className="flex flex-col gap-2">
@@ -120,6 +127,72 @@ function TranscriptSection({ transcript }: { transcript?: string }) {
       ) : null}
     </section>
   );
+}
+
+/** 80以上=緑/60-79=黄/60未満=赤（DESIGN.md §8c）。 */
+function scoreToneClass(score: number): string {
+  if (score >= 80) return 'text-green-700';
+  if (score >= 60) return 'text-amber-600';
+  return 'text-red-600';
+}
+
+function scoreBgClass(score: number): string {
+  if (score >= 80) return 'border-green-200 bg-green-50';
+  if (score >= 60) return 'border-amber-200 bg-amber-50';
+  return 'border-red-200 bg-red-50';
+}
+
+/**
+ * 「発音スコア」カード（DESIGN.md §8c）。総合/正確さ/流暢さ/韻律/完全性の5項目と、
+ * スコアの低い単語ワースト5（点数付き）を表示する。judge.azureが無い提出では呼ばれない。
+ */
+function AzureScoreCard({ azure }: { azure: AzurePronunciationResult }) {
+  const worst = worstWords(azure.words, 5);
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3">
+      <p className="text-sm font-semibold text-neutral-700">発音スコア（Azure）</p>
+      <div className="grid grid-cols-5 gap-1.5">
+        <AzureScoreTile label="総合" score={azure.pronScore} />
+        <AzureScoreTile label="正確さ" score={azure.accuracyScore} />
+        <AzureScoreTile label="流暢さ" score={azure.fluencyScore} />
+        <AzureScoreTile label="韻律" score={azure.prosodyScore} />
+        <AzureScoreTile label="完全性" score={azure.completenessScore} />
+      </div>
+      {worst.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs font-medium text-neutral-500">スコアの低い単語</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {worst.map((w, i) => (
+              <AzureWordChip key={`${w.word}-${i}`} word={w} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function AzureScoreTile({ label, score }: { label: string; score: number }) {
+  return (
+    <div className={`rounded-md border p-1.5 text-center ${scoreBgClass(score)}`}>
+      <p className={`text-sm font-bold ${scoreToneClass(score)}`}>{Math.round(score)}</p>
+      <p className="text-[10px] text-neutral-500">{label}</p>
+    </div>
+  );
+}
+
+function AzureWordChip({ word }: { word: AzureWordScore }) {
+  return (
+    <li className={`rounded-md border px-2 py-1 text-xs ${scoreBgClass(word.accuracyScore)}`}>
+      <span className="font-medium text-neutral-700">{word.word}</span>
+      <span className={`ml-1 font-semibold ${scoreToneClass(word.accuracyScore)}`}>{Math.round(word.accuracyScore)}</span>
+    </li>
+  );
+}
+
+/** Azure採点が失敗した場合の一行メッセージ表示（DESIGN.md §8c: 「エラー時は1行メッセージ」）。 */
+function AzureErrorNotice({ message }: { message: string }) {
+  return <p className="rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-500">発音スコア: {message}</p>;
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {

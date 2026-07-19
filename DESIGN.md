@@ -6,7 +6,7 @@
 ## 0. 絶対ルール
 
 - 個人情報（本名・実年齢・勤務先・個人メール）をコード・コメント・package.json author等に一切書かない。作者名義は `tomato-daio`。
-- 学習データ・録音・取り込み教材は**端末内(IndexedDB)のみ**。外部送信するコードを書かない。
+- 学習データ・録音・取り込み教材は**端末内(IndexedDB)のみ**。外部送信するコードを書かない。**唯一の例外はAzure発音評価（§8c・M9）**: ユーザーが自分のAPIキーを設定した場合に限り、採点対象の提出音声とスクリプトのみをAzure Speechへ送信してよい（それ以外の音声・データは決して送らない）。
 - リポジトリに同梱してよい教材はパブリックドメイン（VOA Learning English）のみ。ユーザーがローカル取り込みした音源（TED等）は絶対にリポジトリへ入れない。
 - 依存は最小限。指定スタック以外のランタイム依存を勝手に追加しない。
 
@@ -202,6 +202,24 @@ interface MaterialProgress {
   `{ id, articleId, date, sectionIds: string[], total, correct, createdAt }`（DBバージョンを上げてupgradeで追加）
 - **導線**: 教材タブの記事グループヘッダーに「確認テスト」ボタン（doneセクションが1つ以上で活性、0なら「セクションを完了すると挑戦できます」）。記事内のdoneセクションが3の倍数に達した直後は今日タブでも提案
 - 進捗ページに最近のテスト結果（日付・記事・スコア）を数件表示
+
+## 8c. Azure発音評価（M9・任意機能）
+
+シャドテンのプロ添削に最も近づく「音素レベルの発音採点」。**完全に付加的**な機能とし、キー未設定・エラー時も既存のWhisper採点は一切影響を受けない。
+
+- **依存追加（指定）**: `microsoft-cognitiveservices-speech-sdk`（Microsoft公式・本件のための唯一の追加。60秒超音声に対応するためRESTではなくSDKを使う）
+- **設定**（設定ページ「発音スコア（Azure・任意）」セクション）:
+  - APIキー入力（type=password）・リージョン選択（japaneast初期値/japanwest/eastus/westus/southeastasia）・「接続テスト」（issueTokenエンドポイントでキー検証）・「削除」
+  - 保存先は appState（keys: 'azureSpeechKey' / 'azureSpeechRegion'）。**端末内のみ**
+  - 説明文: 無料枠は月5時間で毎日数分なら0円 / 送信されるのは採点する提出音声とスクリプトのみ / キーは端末内にのみ保存
+  - **backup.tsのエクスポートからazureSpeechKeyを除外**（バックアップファイル共有時のキー漏えい防止。restore時も上書きしない）
+- **採点フロー**: 提出時、キーが設定されていればWhisper採点の後に実行（進捗表示「発音スコア取得中…」）。
+  - PronunciationAssessmentConfig: referenceText=セクション全文、GradingSystem=HundredMark、Granularity=Phoneme、EnableProsodyAssessment、enableMiscue=true
+  - 音声は decodeToMono16k の結果をWAV(16kHz mono PCM16)化して pushStream で送る。60秒超に対応するため continuous recognition で最後まで処理し、複数結果はスコアを長さ加重で統合
+  - 結果は `JudgeResult.azure?: { pronScore, accuracyScore, fluencyScore, prosodyScore, completenessScore, words: { word, accuracyScore, errorType }[] }` としてSubmissionに保存（optional・後方互換）
+- **表示**（判定結果画面）: 「発音スコア」カード＝総合/正確さ/流暢さ/韻律/完全性（0-100、80以上=緑/60-79=黄/60未満=赤）。スコアの低い単語ワースト5（点数付き）。エラー時は1行メッセージ（キー無効・ネットワーク等）のみ表示しWhisper結果は通常表示
+- **進捗ページ**: 発音総合スコア（pronScore）の推移を一致率グラフに第2系列として追加（簡易でよい）
+- WAVエンコードとスコア統合・応答パースは純関数化してVitestテスト（API呼び出し自体はモック不要・手動検証）
 
 ## 9. ディレクトリ構成
 

@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  AZURE_REGION_OPTIONS,
+  clearAzureSpeechCredentials,
+  DEFAULT_AZURE_REGION,
+  getAzureSpeechKey,
+  getAzureSpeechRegion,
+  setAzureSpeechCredentials,
+  testAzureSpeechConnection,
+} from '../features/judge/azureSpeechConfig';
 import { SelfTest } from '../features/judge/SelfTest';
 import {
   getSelectedWhisperModelKey,
@@ -23,6 +32,14 @@ export function SettingsPage() {
   const [whisperModelKey, setWhisperModelKey] = useState<WhisperModelKey | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // ---- Azure発音評価（DESIGN.md §8c・M9・任意機能） ----
+  const [azureApiKeyInput, setAzureApiKeyInput] = useState('');
+  const [azureRegionInput, setAzureRegionInput] = useState(DEFAULT_AZURE_REGION);
+  const [azureConfigured, setAzureConfigured] = useState(false);
+  const [azureSaving, setAzureSaving] = useState(false);
+  const [azureTesting, setAzureTesting] = useState(false);
+  const [azureStatus, setAzureStatus] = useState<{ ok: boolean; message: string } | null>(null);
+
   useEffect(() => {
     if (!loaded) void refresh();
   }, [loaded, refresh]);
@@ -37,9 +54,63 @@ export function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getAzureSpeechKey(), getAzureSpeechRegion()]).then(([key, region]) => {
+      if (cancelled) return;
+      if (key) {
+        setAzureApiKeyInput(key);
+        setAzureConfigured(true);
+      }
+      setAzureRegionInput(region);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSelectWhisperModel = (key: WhisperModelKey) => {
     setWhisperModelKey(key);
     void setSelectedWhisperModelKey(key);
+  };
+
+  const handleSaveAzure = async () => {
+    const key = azureApiKeyInput.trim();
+    if (!key) {
+      setAzureStatus({ ok: false, message: 'APIキーを入力してください。' });
+      return;
+    }
+    setAzureSaving(true);
+    setAzureStatus(null);
+    try {
+      await setAzureSpeechCredentials(key, azureRegionInput);
+      setAzureConfigured(true);
+      setAzureStatus({ ok: true, message: '保存しました。次回の提出から発音スコアが採点されます。' });
+    } finally {
+      setAzureSaving(false);
+    }
+  };
+
+  const handleTestAzure = async () => {
+    const key = azureApiKeyInput.trim();
+    setAzureTesting(true);
+    setAzureStatus(null);
+    try {
+      const result = await testAzureSpeechConnection(key, azureRegionInput);
+      setAzureStatus(result);
+    } finally {
+      setAzureTesting(false);
+    }
+  };
+
+  const handleDeleteAzure = async () => {
+    const confirmed = window.confirm('保存済みのAzure APIキーを削除します。よろしいですか？');
+    if (!confirmed) return;
+    await clearAzureSpeechCredentials();
+    setAzureApiKeyInput('');
+    setAzureRegionInput(DEFAULT_AZURE_REGION);
+    setAzureConfigured(false);
+    setAzureStatus({ ok: true, message: '削除しました。以降は通常のWhisper採点のみになります。' });
   };
 
   // 開発ビルド（`npm run dev`）では常に表示。本番ビルドではアプリ情報を連打した時だけ表示する。
@@ -143,6 +214,78 @@ export function SettingsPage() {
         ) : (
           <p className="text-xs text-neutral-400">読み込み中…</p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-xl border border-neutral-200 p-4">
+        <p className="text-sm font-medium text-neutral-700">発音スコア（Azure・任意）</p>
+        <p className="text-xs text-neutral-400">
+          Azure Speechの発音評価を使うと、音素レベルの発音スコアが追加で表示されます（任意機能・未設定でも通常どおり使えます）。
+        </p>
+        <ul className="list-disc pl-4 text-xs text-neutral-400">
+          <li>無料枠は月5時間まで。毎日数分の練習であれば0円で使い続けられます。</li>
+          <li>送信されるのは、採点する提出音声とスクリプトのみです。</li>
+          <li>APIキーはこの端末内にのみ保存され、外部やバックアップファイルには含まれません。</li>
+        </ul>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-neutral-600">APIキー</span>
+          <input
+            type="password"
+            value={azureApiKeyInput}
+            onChange={(e) => setAzureApiKeyInput(e.target.value)}
+            placeholder="Azure Speechのキー1を貼り付け"
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            autoComplete="off"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-neutral-600">リージョン</span>
+          <select
+            value={azureRegionInput}
+            onChange={(e) => setAzureRegionInput(e.target.value)}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          >
+            {AZURE_REGION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void handleSaveAzure()}
+            disabled={azureSaving}
+            className="flex-1 rounded-md bg-tomato-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {azureSaving ? '保存中…' : '保存'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleTestAzure()}
+            disabled={azureTesting || !azureApiKeyInput.trim()}
+            className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-600 disabled:opacity-50"
+          >
+            {azureTesting ? '接続テスト中…' : '接続テスト'}
+          </button>
+        </div>
+
+        {azureConfigured ? (
+          <button
+            type="button"
+            onClick={() => void handleDeleteAzure()}
+            className="rounded-md border border-red-200 px-3 py-2 text-sm text-red-600 active:bg-red-50"
+          >
+            削除
+          </button>
+        ) : null}
+
+        {azureStatus ? (
+          <p className={`text-xs ${azureStatus.ok ? 'text-green-700' : 'text-red-600'}`}>{azureStatus.message}</p>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-neutral-200 p-4">

@@ -12,6 +12,15 @@ import { getDB, type AppStateValue, type Material, type MaterialProgress, type P
 const BACKUP_VERSION = 2;
 const BACKUP_APP_ID = 'shadotoma';
 
+/**
+ * appStateの保存キー名（DESIGN.md §8c: Azure発音評価のAPIキー）。
+ * バックアップファイル共有時のキー漏えいを防ぐため、エクスポートから常に除外し、
+ * インポート時も端末に既に保存されている値を上書きしない（このファイルの下部を参照）。
+ * 値の文字列は src/features/judge/azureSpeechConfig.ts の
+ * AZURE_SPEECH_KEY_APP_STATE_KEY と一致させること。
+ */
+const AZURE_SPEECH_KEY_STATE_KEY = 'azureSpeechKey';
+
 interface BlobField {
   base64: string;
   mimeType: string;
@@ -82,7 +91,7 @@ async function exportSubmission(s: Submission): Promise<ExportedSubmission> {
 /** 全データをエクスポート用のJSON Blobにまとめる。 */
 export async function exportAllData(): Promise<Blob> {
   const db = await getDB();
-  const [materials, sessions, submissions, materialProgress, appState, quizResults] = await Promise.all([
+  const [materials, sessions, submissions, materialProgress, rawAppState, quizResults] = await Promise.all([
     db.getAll('materials'),
     db.getAll('sessions'),
     db.getAll('submissions'),
@@ -95,6 +104,10 @@ export async function exportAllData(): Promise<Blob> {
     Promise.all(materials.map(exportMaterial)),
     Promise.all(submissions.map(exportSubmission)),
   ]);
+
+  // DESIGN.md §8c: Azure発音評価のAPIキーはバックアップファイルに含めない
+  // （ファイル共有時のキー漏えい防止）。
+  const appState = rawAppState.filter((entry) => entry.key !== AZURE_SPEECH_KEY_STATE_KEY);
 
   const bundle: BackupBundle = {
     app: BACKUP_APP_ID,
@@ -163,17 +176,24 @@ export async function importAllData(file: Blob): Promise<void> {
 
   const materials = data.materials.map(importMaterial);
   const submissions = data.submissions.map(importSubmission);
+  // DESIGN.md §8c: バックアップは通常azureSpeechKeyを含まない（エクスポート時に除外済み）が、
+  // 念のためインポート側でも取り除き、常に「復元前に端末へ保存されていた値」を優先する
+  // （＝インポートで既存キーを消さない・上書きしない）。
+  const importedAppState = data.appState.filter((entry) => entry.key !== AZURE_SPEECH_KEY_STATE_KEY);
 
   const db = await getDB();
   const storeNames = ['materials', 'sessions', 'submissions', 'materialProgress', 'appState', 'quizResults'] as const;
   const tx = db.transaction(storeNames, 'readwrite');
+  // 全ストアをclearする前に、既存のazureSpeechKeyを退避しておく（clear後に書き戻すため）。
+  const preservedAzureKeyRecord = await tx.objectStore('appState').get(AZURE_SPEECH_KEY_STATE_KEY);
   await Promise.all(storeNames.map((name) => tx.objectStore(name).clear()));
   await Promise.all([
     ...materials.map((m) => tx.objectStore('materials').put(m)),
     ...data.sessions.map((s) => tx.objectStore('sessions').put(s)),
     ...submissions.map((s) => tx.objectStore('submissions').put(s)),
     ...data.materialProgress.map((p) => tx.objectStore('materialProgress').put(p)),
-    ...data.appState.map((a) => tx.objectStore('appState').put(a)),
+    ...importedAppState.map((a) => tx.objectStore('appState').put(a)),
+    ...(preservedAzureKeyRecord ? [tx.objectStore('appState').put(preservedAzureKeyRecord)] : []),
     ...(data.quizResults ?? []).map((q) => tx.objectStore('quizResults').put(q)),
   ]);
   await tx.done;

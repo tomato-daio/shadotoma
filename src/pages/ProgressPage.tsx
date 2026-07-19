@@ -79,7 +79,8 @@ export function ProgressPage() {
       .filter((s): s is Submission & { judge: NonNullable<Submission['judge']> } => Boolean(s.judge))
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
-      .map((s) => ({ date: s.date, matchRate: s.judge.matchRate }));
+      // DESIGN.md §8c(M9): Azure発音評価を実行した提出のみpronScoreを持つ（未実行の提出はundefined）。
+      .map((s) => ({ date: s.date, matchRate: s.judge.matchRate, pronScore: s.judge.azure?.pronScore }));
   }, [submissions]);
 
   const sortedProgresses = useMemo(
