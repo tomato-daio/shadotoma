@@ -25,6 +25,14 @@ export interface Material {
   articleId?: string; // 元記事のグループキー（例 "voa-8002695"）。ライブラリで同一記事をまとめて表示
   part?: number; // 1始まりのセクション番号
   partCount?: number; // 記事内の総セクション数
+  // ---- 音素情報（M13・DESIGN.md §8d）----
+  /**
+   * このセクションの語をCMUdictで音素列化し、対象15音素（phonemeAdvice.tsと同じARPAbet大文字キー
+   * 体系。例: 'R','TH','AE'）ごとの出現数を数えたもの（scripts/annotate-phonemes.mjsが付与）。
+   * bundled教材のみ・fetch-voa完了時に自動生成。ローカル取り込み教材や旧データにはoptional（undefined）。
+   * recommend.ts の「苦手音素×phonemeCounts密度」スコアリングに使う。
+   */
+  phonemeCounts?: Record<string, number>;
 }
 
 // store: sessions（練習1回=1レコード。回数カウントの元データ）
@@ -56,6 +64,28 @@ export interface AzureWordScore {
   errorType?: string;
 }
 
+// ---- Azureコメント用の拡張データ（M12・DESIGN.md §8c）----
+
+/**
+ * 低スコア音素1件ぶん（Words[].Phonemesを集計したもの）。
+ * phonemeはARPAbet大文字キー（例: 'R','TH','AE'。azurePronunciation.tsのnormalizePhonemeKeyで正規化
+ * 済み。SDKのphonemeAlphabetは既定のSAPIのままにしているため、en-USでは元々ARPAbet相当の大文字表記
+ * で返ってくる）。phonemeAdvice.tsの辞書キーと同じ体系だが、辞書に無いキーが入ることもある
+ * （その場合はコメント側で「コツ文なし」にフォールバックする）。
+ */
+export interface AzureWeakPhoneme {
+  phoneme: string;
+  avgScore: number; // この提出内での平均AccuracyScore
+  examples: string[]; // スコアが低かった該当語（重複除去・最大2件）
+}
+
+/** 韻律のFeedback集計（Words[].PronunciationAssessment.Feedback.Prosodyを集計したもの）。 */
+export interface AzureProsodyFeedback {
+  unexpectedBreaks: number; // ErrorTypesに'UnexpectedBreak'を含む語の数
+  missingBreaks: number; // ErrorTypesに'MissingBreak'を含む語の数
+  monotone: boolean; // いずれかの語のIntonation.ErrorTypesに'Monotone'を含むか
+}
+
 /** Azure発音評価の統合結果（複数フレーズ結果を音声長加重で統合済み）。 */
 export interface AzurePronunciationResult {
   pronScore: number; // 総合 0-100
@@ -69,6 +99,17 @@ export interface AzurePronunciationResult {
   prosodyScore?: number;
   completenessScore: number; // 完全性 0-100
   words: AzureWordScore[];
+  /**
+   * 低スコア音素トップ3（M12・DESIGN.md §8c）。音素ごとの平均スコア昇順。
+   * Phoneme granularityのデータが取れなかった場合や後方互換のため既存データではundefined。
+   */
+  weakPhonemes?: AzureWeakPhoneme[];
+  /**
+   * 韻律Feedbackの集計（M12）。韻律なし設定で成功した場合（M10フォールバック）はprosodyScore同様
+   * undefinedにする（データが取れていないのを「問題なし」と誤解させないため）。既存データも
+   * undefined（後方互換）。
+   */
+  prosodyFeedback?: AzureProsodyFeedback;
 }
 
 // JudgeResult（M3で実装。型だけ先に定義）
@@ -120,6 +161,12 @@ export interface QuizResult {
   total: number;
   correct: number;
   createdAt: number; // epoch ms
+  /**
+   * 不正解だった空欄の正答語（スクリプト上の元の表記。M13・DESIGN.md §8d）。
+   * weakness.ts の「苦手単語（missed/sub/Azure低スコア語/クイズ誤答が2回以上重なった語）」の
+   * 集計対象に使う。新storeは追加せずquizResultsへ追記する形にしたため、旧データにはoptional。
+   */
+  wrongWords?: string[];
 }
 
 export type AppStateValue = string | number | boolean | null;
@@ -412,9 +459,19 @@ export async function getQuizResultsByArticle(articleId: string): Promise<QuizRe
 
 /** 進捗ページの「最近のテスト結果」表示用に、全記事横断で新しい順に最大limit件取得する。 */
 export async function getRecentQuizResults(limit = 5): Promise<QuizResult[]> {
+  const list = await getAllQuizResults();
+  return list.slice(0, limit);
+}
+
+/**
+ * 全記事横断の確認テスト結果を新しい順で取得する（M13・DESIGN.md §8d）。
+ * weakness.ts の buildWeaknessProfile は苦手単語集計に全件（直近だけでなく）を使うため、
+ * getRecentQuizResultsとは別に上限なしの取得口を用意する。
+ */
+export async function getAllQuizResults(): Promise<QuizResult[]> {
   const db = await getDB();
   const list = await db.getAll('quizResults');
-  return list.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
+  return list.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 // ---- bundled材料の同期 ----

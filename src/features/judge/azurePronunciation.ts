@@ -8,8 +8,15 @@
  * 静的importするとAzureキー未設定のユーザーが開く判定結果画面のバンドルにも常に含まれて
  * しまうため、実際にキーが設定され採点が実行されるときだけ読み込む（バンドル分割）。
  * このファイルの純関数群（toPhraseAssessment/aggregatePhraseAssessments/worstWords/
- * describeAzureError/truncateDetail/resolveRecognitionOutcome）はSDKに依存しないため、
- * SDK無しでVitestテストできる。
+ * describeAzureError/truncateDetail/resolveRecognitionOutcome/normalizePhonemeKey/
+ * computeWeakPhonemes/aggregateProsodyFeedback）はSDKに依存しないため、SDK無しでVitestテストできる。
+ *
+ * 音素キーの表記（M12・DESIGN.md §8c）: PronunciationAssessmentConfig.phonemeAlphabet は
+ * 明示的に設定していない（既定値のまま）。SDKの既定値は "SAPI" であり、en-USのSAPI音素表記は
+ * ARPAbetに準じた大文字表記（例: 'R','TH','AE'）になる。そのため生の Phoneme 文字列を
+ * 大文字化し、末尾の強勢番号（例: "AH1"）だけ取り除けば phonemeAdvice.ts のARPAbetキーと
+ * そのまま突き合わせられる（normalizePhonemeKey）。IPAへの変換は行わない
+ * （phonemeAlphabet: "IPA" を明示指定した場合はこの前提が崩れるため、指定しないこと）。
  *
  * iOS Safari(WebKit)の後片付けバグ対策（M10追補）: SDKには、認識終了時の後片付け
  * （stopContinuousRecognitionAsync/close周辺のprivSource.turnOff）で
@@ -26,7 +33,7 @@
  * prosodyScoreはoptional）。両方失敗した場合のみ例外を投げる。
  */
 
-import type { AzurePronunciationResult, AzureWordScore } from '../../lib/db';
+import type { AzureProsodyFeedback, AzurePronunciationResult, AzureWeakPhoneme, AzureWordScore } from '../../lib/db';
 import { encodeWavPcm16 } from '../../lib/wav';
 
 export interface RunAzurePronunciationAssessmentParams {
@@ -36,6 +43,15 @@ export interface RunAzurePronunciationAssessmentParams {
   referenceText: string;
   apiKey: string;
   region: string;
+}
+
+/** Words[].Phonemes[]の1音素ぶん（M12）。低スコア音素の集計に使う中間データ。 */
+export interface PhonemeScoreEntry {
+  /** normalizePhonemeKey済みのARPAbet大文字キー（例: 'R'）。 */
+  phoneme: string;
+  accuracyScore: number;
+  /** 表示用の原文の語（例語の抽出に使う）。 */
+  word: string;
 }
 
 /** 1回のcontinuous recognitionフレーズぶんのスコア（音声長で加重統合する前の単位）。 */
@@ -48,17 +64,35 @@ export interface PhraseAssessment {
   completenessScore: number;
   prosodyScore: number;
   words: AzureWordScore[];
+  /** M12: このフレーズに含まれる全語の音素スコア（重み付けなしの生データ）。 */
+  phonemeScores: PhonemeScoreEntry[];
+  /** M12: このフレーズ内の韻律Feedback集計。 */
+  prosodyFeedback: AzureProsodyFeedback;
 }
 
 /**
  * Azure Speech SDKの `PronunciationAssessmentResult.detailResult` の必要部分だけを表す型。
  * SDKの型（distrib/lib/src/sdk/PronunciationAssessmentResult.d.ts の DetailResult）と同じ形。
  * SDKに依存せずテストできるよう、このファイル内で独自定義する。
+ *
+ * Phonemes/Feedback（M12）はMicrosoft Learn「Use pronunciation assessment」記載のJSONサンプル
+ * （Words[].Phonemes[].Phoneme / Words[].PronunciationAssessment.Feedback.Prosody.Break.ErrorTypes /
+ * ...Intonation.ErrorTypes）に基づく形。
  */
 export interface AzureDetailResultLike {
   Words?: {
     Word: string;
-    PronunciationAssessment?: { AccuracyScore?: number; ErrorType?: string };
+    PronunciationAssessment?: {
+      AccuracyScore?: number;
+      ErrorType?: string;
+      Feedback?: {
+        Prosody?: {
+          Break?: { ErrorTypes?: string[] };
+          Intonation?: { ErrorTypes?: string[] };
+        };
+      };
+    };
+    Phonemes?: { Phoneme: string; PronunciationAssessment?: { AccuracyScore?: number } }[];
   }[];
   PronunciationAssessment?: {
     AccuracyScore?: number;
@@ -69,14 +103,43 @@ export interface AzureDetailResultLike {
   };
 }
 
+/**
+ * 生のAzure音素表記を、phonemeAdvice.tsのARPAbetキー体系に正規化する純関数（M12）。
+ * 前後の空白を除き大文字化し、末尾の強勢番号（母音に付く0/1/2）を取り除く（例: "ah1" -> "AH"）。
+ * 空文字列や数字のみの入力は空文字列のまま返す（呼び出し側で除外する）。
+ */
+export function normalizePhonemeKey(raw: string): string {
+  return raw.trim().toUpperCase().replace(/[0-9]+$/, '');
+}
+
 /** SDKのdetailResult(1フレーズぶん)を、統合前のPhraseAssessmentへ変換する純関数。 */
 export function toPhraseAssessment(detail: AzureDetailResultLike, durationTicks: number): PhraseAssessment {
   const pa = detail.PronunciationAssessment ?? {};
-  const words: AzureWordScore[] = (detail.Words ?? []).map((w) => ({
+  const wordsRaw = detail.Words ?? [];
+  const words: AzureWordScore[] = wordsRaw.map((w) => ({
     word: w.Word,
     accuracyScore: w.PronunciationAssessment?.AccuracyScore ?? 0,
     errorType: w.PronunciationAssessment?.ErrorType,
   }));
+
+  // M12: 音素スコアと韻律Feedbackを語ごとに集計する。
+  const phonemeScores: PhonemeScoreEntry[] = [];
+  let unexpectedBreaks = 0;
+  let missingBreaks = 0;
+  let monotone = false;
+  for (const w of wordsRaw) {
+    for (const ph of w.Phonemes ?? []) {
+      const score = ph.PronunciationAssessment?.AccuracyScore;
+      const key = normalizePhonemeKey(ph.Phoneme ?? '');
+      if (typeof score !== 'number' || key === '') continue;
+      phonemeScores.push({ phoneme: key, accuracyScore: score, word: w.Word });
+    }
+    const prosody = w.PronunciationAssessment?.Feedback?.Prosody;
+    if (prosody?.Break?.ErrorTypes?.includes('UnexpectedBreak')) unexpectedBreaks += 1;
+    if (prosody?.Break?.ErrorTypes?.includes('MissingBreak')) missingBreaks += 1;
+    if (prosody?.Intonation?.ErrorTypes?.includes('Monotone')) monotone = true;
+  }
+
   return {
     durationTicks: Math.max(0, durationTicks),
     pronScore: pa.PronScore ?? 0,
@@ -85,7 +148,58 @@ export function toPhraseAssessment(detail: AzureDetailResultLike, durationTicks:
     completenessScore: pa.CompletenessScore ?? 0,
     prosodyScore: pa.ProsodyScore ?? 0,
     words,
+    phonemeScores,
+    prosodyFeedback: { unexpectedBreaks, missingBreaks, monotone },
   };
+}
+
+const WEAK_PHONEME_LIMIT = 3;
+const WEAK_PHONEME_EXAMPLE_LIMIT = 2;
+
+/**
+ * 音素スコアの生データ（複数フレーズぶんをflatMapしたもの）から、低スコア音素トップNを求める
+ * 純関数（M12・DESIGN.md §8c）。同じ音素の複数出現は平均スコアへ集約し、平均が低い順に並べる。
+ * 例語はその音素の中でスコアが低かった語を優先し、重複語を除いて最大exampleLimit件にする
+ * （「どこでつまずいたか」が伝わる例を出すため）。
+ */
+export function computeWeakPhonemes(
+  entries: PhonemeScoreEntry[],
+  limit: number = WEAK_PHONEME_LIMIT,
+  exampleLimit: number = WEAK_PHONEME_EXAMPLE_LIMIT,
+): AzureWeakPhoneme[] {
+  const byPhoneme = new Map<string, PhonemeScoreEntry[]>();
+  for (const e of entries) {
+    const list = byPhoneme.get(e.phoneme) ?? [];
+    list.push(e);
+    byPhoneme.set(e.phoneme, list);
+  }
+
+  const summaries = [...byPhoneme.entries()].map(([phoneme, list]) => {
+    const avgScore = list.reduce((sum, e) => sum + e.accuracyScore, 0) / list.length;
+    const examples: string[] = [];
+    const seen = new Set<string>();
+    for (const e of [...list].sort((a, b) => a.accuracyScore - b.accuracyScore)) {
+      if (seen.has(e.word)) continue;
+      seen.add(e.word);
+      examples.push(e.word);
+      if (examples.length >= exampleLimit) break;
+    }
+    return { phoneme, avgScore, examples };
+  });
+
+  return summaries.sort((a, b) => a.avgScore - b.avgScore).slice(0, limit);
+}
+
+/** 複数フレーズの韻律Feedbackを合算する純関数（M12）。unexpectedBreaks/missingBreaksは合計、monotoneはOR。 */
+export function aggregateProsodyFeedback(list: AzureProsodyFeedback[]): AzureProsodyFeedback {
+  return list.reduce(
+    (acc, f) => ({
+      unexpectedBreaks: acc.unexpectedBreaks + f.unexpectedBreaks,
+      missingBreaks: acc.missingBreaks + f.missingBreaks,
+      monotone: acc.monotone || f.monotone,
+    }),
+    { unexpectedBreaks: 0, missingBreaks: 0, monotone: false },
+  );
 }
 
 /**
@@ -105,6 +219,10 @@ export function aggregatePhraseAssessments(phrases: PhraseAssessment[]): AzurePr
   const weightedAverage = (pick: (p: PhraseAssessment) => number): number =>
     phrases.reduce((sum, p) => sum + pick(p) * weightOf(p), 0) / weightTotal;
 
+  // M12: 音素スコアはフレーズ間で単純にflatMapしてから低スコア音素トップ3を求める（音声長での
+  // 重み付けはしない。1音素あたりの出現回数自体がフレーズ長に比例するため、二重に重み付けしない）。
+  const weakPhonemes = computeWeakPhonemes(phrases.flatMap((p) => p.phonemeScores));
+
   return {
     pronScore: weightedAverage((p) => p.pronScore),
     accuracyScore: weightedAverage((p) => p.accuracyScore),
@@ -112,6 +230,8 @@ export function aggregatePhraseAssessments(phrases: PhraseAssessment[]): AzurePr
     prosodyScore: weightedAverage((p) => p.prosodyScore),
     completenessScore: weightedAverage((p) => p.completenessScore),
     words: phrases.flatMap((p) => p.words),
+    weakPhonemes: weakPhonemes.length > 0 ? weakPhonemes : undefined,
+    prosodyFeedback: aggregateProsodyFeedback(phrases.map((p) => p.prosodyFeedback)),
   };
 }
 
@@ -314,7 +434,14 @@ async function recognizeOnce(
         if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
         try {
           const detail = SpeechSDK.PronunciationAssessmentResult.fromResult(e.result).detailResult;
-          phrases.push(toPhraseAssessment(detail, e.result.duration));
+          // microsoft-cognitiveservices-speech-sdkに同梱の型定義（DetailResult/WordResult）は、
+          // 実際のAzure応答JSON（Microsoft Learn「Use pronunciation assessment」記載のサンプル）
+          // に存在するWords[].Phonemes[].PronunciationAssessment.AccuracyScoreや
+          // Words[].PronunciationAssessment.Feedback.Prosody を宣言しておらず、型定義が
+          // 実際の応答仕様より古い/不足している（Phonemeもstring|undefinedのままAccuracyScoreが
+          // 型上存在しない）。実行時の値は変わらないため、実際の応答形を表す独自定義
+          // AzureDetailResultLike へ橋渡しする（unknown経由のキャストが必要）。
+          phrases.push(toPhraseAssessment(detail as unknown as AzureDetailResultLike, e.result.duration));
         } catch {
           // 個々のフレーズのパース失敗は無視して継続する（他のフレーズの結果は活かす）。
         }
@@ -445,6 +572,10 @@ export async function runAzurePronunciationAssessment(
     // 韻律なしでの実行結果はProsodyScoreが常に既定値(0)になるため、誤解を招かないよう
     // undefinedにする（DESIGN.md §8c M10:「成功したらprosodyScoreなしで保存・表示」）。
     aggregated.prosodyScore = undefined;
+    // M12: 韻律Feedback（unexpectedBreaks/missingBreaks/monotone）もEnableProsodyAssessmentが
+    // 効いていないと取得できず常に0/falseになるため、同様に「データなし」を表すundefinedにする
+    // （0件・非monotoneと区別できないと誤って「韻律は良好」と表示してしまうため）。
+    aggregated.prosodyFeedback = undefined;
   }
   return aggregated;
 }

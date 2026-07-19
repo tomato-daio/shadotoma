@@ -222,8 +222,25 @@ interface MaterialProgress {
   - 音声は decodeToMono16k の結果をWAV(16kHz mono PCM16)化して pushStream で送る。60秒超に対応するため continuous recognition で最後まで処理し、複数結果はスコアを長さ加重で統合
   - 結果は `JudgeResult.azure?: { pronScore, accuracyScore, fluencyScore, prosodyScore, completenessScore, words: { word, accuracyScore, errorType }[] }` としてSubmissionに保存（optional・後方互換）
 - **表示**（判定結果画面）: 「発音スコア」カード＝総合/正確さ/流暢さ/韻律/完全性（0-100、80以上=緑/60-79=黄/60未満=赤）。スコアの低い単語ワースト5（点数付き）。エラー時は1行メッセージ（キー無効・ネットワーク等）のみ表示しWhisper結果は通常表示
+- **Azureコメント（M12）**: Azureの詳細データから日本語の短いコメントを最大3件、ルールベースで生成しカード内に表示する。
+  - 取得データの拡張: 応答パース時に (a) 単語ごとの**音素スコア**（Phoneme granularity応答のWords[].Phonemes）を集計し、低スコア音素トップ（音素記号・平均点・該当語の例最大2つ）を `AzurePronunciationResult.weakPhonemes?: { phoneme: string; avgScore: number; examples: string[] }[]`（上位3件）として保存、(b) プロソディのFeedback（UnexpectedBreak/MissingBreak/Monotoneの件数）を `prosodyFeedback?: { unexpectedBreaks: number; missingBreaks: number; monotone: boolean }` として保存（いずれもoptional・後方互換）
+  - コメント生成 `src/features/judge/azureComments.ts`（純関数・**Vitestテスト必須**）: 優先度順に最大3件 — ①低スコア音素（平均60点未満）: **手書きの音素アドバイス辞書**（日本人の苦手音15種程度: r, l, θ, ð, v, f, w, æ, ʌ, ə, ɜː, ɪ/iː, s/ʃ, 語末子音など。カタカナ+口の動きのコツを人手で執筆。辞書に無い音素は記号と例語のみでコツ文なし）から「◯の音が苦手です（例語 点数）: コツ」形式で生成、②流暢さ<75 かつ unexpectedBreaks>0: 「不要な間がN箇所…」、③monotone or 韻律<70: 「抑揚が平坦気味…」、④completeness<80: 「読み飛ばしがあります…」。該当なしなら「発音は安定しています」等の肯定コメント1件
+  - 過去データ（weakPhonemes等が無い提出）ではコメント欄を出さない（後方互換）
 - **進捗ページ**: 発音総合スコア（pronScore）の推移を一致率グラフに第2系列として追加（簡易でよい）
 - WAVエンコードとスコア統合・応答パースは純関数化してVitestテスト（API呼び出し自体はモック不要・手動検証）
+
+## 8d. 弱点分析とパーソナライズ推薦（M13）
+
+提出データを「弱点プロファイル」に集約し、教材推薦へつなげる適応ループ。新storeは作らず提出データから都度導出する。
+
+- **教材メタの音素情報**: `scripts/annotate-phonemes.mjs`（新規）が CMUdict（パブリックドメイン・PCで1回DL・リポジトリには辞書本体を含めずキャッシュ利用）で全セクションの語を音素列化し、**対象15音素（M12の音素アドバイス辞書と同一キー体系）の出現数** `phonemeCounts?: Record<string, number>` を index.json の各セクションへ追記（音声・文・IDは不変）。fetch-voa 完了時にも自動実行
+- **弱点プロファイル** `src/features/insights/weakness.ts`（純関数・Vitestテスト必須）: `buildWeaknessProfile(submissions, quizResults)` →
+  - 苦手音素: Azure音素スコアの時間減衰加重平均（半減期10提出）で低スコア音素を抽出、傾向（改善中/停滞）付き。直近平均75以上になったら「克服」扱い
+  - 苦手現象: issuesの指摘頻度 ×**未改善率**（1−previousIssueOutcomesの改善割合。下限0.1）。「頻繁に指摘され、かつ改善できていない現象」が最優先（M13検収時に確定）
+  - 苦手単語: missed/sub/Azure低スコア語/クイズ誤答が2回以上重なった語（normalizeWord正規化で同一視）
+- **見える化**: 進捗タブに「苦手分析」セクション＝苦手音トップ3（M12辞書のコツ文を再利用）・苦手現象・繰り返し間違う単語トップ5・克服バッジ
+- **推薦** `recommendMaterials(profile, materials, progresses)`（純関数・テスト必須）: スコア＝苦手音素の出現密度（phonemeCounts）＋苦手現象の練習機会数（phenomena検出器を教材文に適用して都度計算）＋苦手単語の出現＋レベル適正（直近平均一致率<60%なら低レベル優先・>85%なら上へ）。対象はdone以外のbundledセクション。今日タブ「あなたへのおすすめ」カードに上位2件を**推薦理由つき**で表示。プロファイルが薄い間（提出数不足）はレベル順の未着手教材にフォールバック（コールドスタート）
+- **将来拡張（未実装・記録のみ）**: 苦手音・苦手単語を狙ったカスタム教材のTTS生成（OpenAI TTS等・1教材数円・要APIキー）。推薦が機能した後の次段階
 
 ## 9. ディレクトリ構成
 

@@ -5,12 +5,16 @@ import {
   AzurePronunciationNoResultError,
   AzurePronunciationTimeoutError,
   aggregatePhraseAssessments,
+  aggregateProsodyFeedback,
+  computeWeakPhonemes,
   describeAzureError,
+  normalizePhonemeKey,
   resolveRecognitionOutcome,
   toPhraseAssessment,
   truncateDetail,
   worstWords,
   type AzureDetailResultLike,
+  type PhonemeScoreEntry,
   type PhraseAssessment,
 } from './azurePronunciation';
 
@@ -40,7 +44,62 @@ function makePhrase(overrides: Partial<PhraseAssessment> = {}): PhraseAssessment
     completenessScore: 80,
     prosodyScore: 80,
     words: [],
+    phonemeScores: [],
+    prosodyFeedback: { unexpectedBreaks: 0, missingBreaks: 0, monotone: false },
     ...overrides,
+  };
+}
+
+/**
+ * Microsoft Learn「Use pronunciation assessment」記載のJSONサンプルを参考にした、
+ * Phoneme granularity + EnableProsodyAssessment有効時の1語ぶんのフィクスチャ（M12）。
+ * 実際のAzure応答ではPhoneme値はSAPI表記（既定・ARPAbet相当の大文字）で返る前提
+ * （ファイル冒頭コメント参照）。
+ */
+function makeSampleDetailWithPhonemes(): AzureDetailResultLike {
+  return {
+    Words: [
+      {
+        Word: 'think',
+        PronunciationAssessment: {
+          AccuracyScore: 55,
+          ErrorType: 'Mispronunciation',
+          Feedback: { Prosody: { Break: { ErrorTypes: [] }, Intonation: { ErrorTypes: [] } } },
+        },
+        Phonemes: [
+          { Phoneme: 'TH', PronunciationAssessment: { AccuracyScore: 40 } },
+          { Phoneme: 'IH1', PronunciationAssessment: { AccuracyScore: 80 } },
+          { Phoneme: 'NG', PronunciationAssessment: { AccuracyScore: 90 } },
+          { Phoneme: 'K', PronunciationAssessment: { AccuracyScore: 95 } },
+        ],
+      },
+      {
+        Word: 'about',
+        PronunciationAssessment: {
+          AccuracyScore: 100,
+          ErrorType: 'None',
+          Feedback: {
+            Prosody: {
+              Break: { ErrorTypes: ['UnexpectedBreak'] },
+              Intonation: { ErrorTypes: ['Monotone'] },
+            },
+          },
+        },
+        Phonemes: [
+          { Phoneme: 'AH0', PronunciationAssessment: { AccuracyScore: 100 } },
+          { Phoneme: 'B', PronunciationAssessment: { AccuracyScore: 100 } },
+          { Phoneme: 'AW1', PronunciationAssessment: { AccuracyScore: 100 } },
+          { Phoneme: 'T', PronunciationAssessment: { AccuracyScore: 100 } },
+        ],
+      },
+    ],
+    PronunciationAssessment: {
+      AccuracyScore: 78,
+      FluencyScore: 65,
+      CompletenessScore: 100,
+      PronScore: 70,
+      ProsodyScore: 60,
+    },
   };
 }
 
@@ -58,6 +117,8 @@ describe('toPhraseAssessment', () => {
         { word: 'hello', accuracyScore: 90, errorType: 'None' },
         { word: 'world', accuracyScore: 70, errorType: 'Mispronunciation' },
       ],
+      phonemeScores: [],
+      prosodyFeedback: { unexpectedBreaks: 0, missingBreaks: 0, monotone: false },
     });
   });
 
@@ -69,6 +130,8 @@ describe('toPhraseAssessment', () => {
     expect(result.completenessScore).toBe(0);
     expect(result.prosodyScore).toBe(0);
     expect(result.words).toEqual([]);
+    expect(result.phonemeScores).toEqual([]);
+    expect(result.prosodyFeedback).toEqual({ unexpectedBreaks: 0, missingBreaks: 0, monotone: false });
   });
 
   it('負のdurationは0にクリップする', () => {
@@ -79,6 +142,138 @@ describe('toPhraseAssessment', () => {
   it('単語ごとのPronunciationAssessmentが無い場合はaccuracyScore 0・errorType未設定にする', () => {
     const result = toPhraseAssessment({ Words: [{ Word: 'foo' }] }, 100);
     expect(result.words).toEqual([{ word: 'foo', accuracyScore: 0, errorType: undefined }]);
+  });
+
+  // ---- M12: 音素スコア・韻律Feedbackの抽出 ----
+
+  it('Words[].Phonemesを大文字ARPAbetキーに正規化してphonemeScoresへ集める（M12）', () => {
+    const result = toPhraseAssessment(makeSampleDetailWithPhonemes(), 1000);
+    expect(result.phonemeScores).toEqual([
+      { phoneme: 'TH', accuracyScore: 40, word: 'think' },
+      { phoneme: 'IH', accuracyScore: 80, word: 'think' }, // "IH1" -> 強勢番号を除去
+      { phoneme: 'NG', accuracyScore: 90, word: 'think' },
+      { phoneme: 'K', accuracyScore: 95, word: 'think' },
+      { phoneme: 'AH', accuracyScore: 100, word: 'about' },
+      { phoneme: 'B', accuracyScore: 100, word: 'about' },
+      { phoneme: 'AW', accuracyScore: 100, word: 'about' },
+      { phoneme: 'T', accuracyScore: 100, word: 'about' },
+    ]);
+  });
+
+  it('Feedback.Prosody.Break/IntonationのErrorTypesから韻律Feedbackを集計する（M12）', () => {
+    const result = toPhraseAssessment(makeSampleDetailWithPhonemes(), 1000);
+    // think: Break/Intonationとも空。about: UnexpectedBreak 1件・Monotone 1件。
+    expect(result.prosodyFeedback).toEqual({ unexpectedBreaks: 1, missingBreaks: 0, monotone: true });
+  });
+
+  it('MissingBreakも数える（M12）', () => {
+    const detail: AzureDetailResultLike = {
+      Words: [
+        {
+          Word: 'now',
+          PronunciationAssessment: { AccuracyScore: 90, Feedback: { Prosody: { Break: { ErrorTypes: ['MissingBreak'] } } } },
+        },
+      ],
+    };
+    const result = toPhraseAssessment(detail, 1000);
+    expect(result.prosodyFeedback).toEqual({ unexpectedBreaks: 0, missingBreaks: 1, monotone: false });
+  });
+
+  it('Phoneme値やAccuracyScoreが欠けている音素は除外する（M12）', () => {
+    const detail: AzureDetailResultLike = {
+      Words: [
+        {
+          Word: 'x',
+          Phonemes: [
+            { Phoneme: '', PronunciationAssessment: { AccuracyScore: 50 } },
+            { Phoneme: 'S' },
+            { Phoneme: 'Z', PronunciationAssessment: { AccuracyScore: 60 } },
+          ],
+        },
+      ],
+    };
+    const result = toPhraseAssessment(detail, 1000);
+    expect(result.phonemeScores).toEqual([{ phoneme: 'Z', accuracyScore: 60, word: 'x' }]);
+  });
+});
+
+describe('normalizePhonemeKey', () => {
+  it('大文字化する', () => {
+    expect(normalizePhonemeKey('r')).toBe('R');
+  });
+
+  it('末尾の強勢番号（0/1/2）を取り除く', () => {
+    expect(normalizePhonemeKey('AH0')).toBe('AH');
+    expect(normalizePhonemeKey('IH1')).toBe('IH');
+    expect(normalizePhonemeKey('AW2')).toBe('AW');
+  });
+
+  it('強勢番号の無い子音はそのまま', () => {
+    expect(normalizePhonemeKey('TH')).toBe('TH');
+  });
+
+  it('前後の空白を除く', () => {
+    expect(normalizePhonemeKey('  R  ')).toBe('R');
+  });
+});
+
+describe('computeWeakPhonemes', () => {
+  function entry(phoneme: string, accuracyScore: number, word: string): PhonemeScoreEntry {
+    return { phoneme, accuracyScore, word };
+  }
+
+  it('同一音素の複数出現は平均スコアに集約する', () => {
+    const result = computeWeakPhonemes([entry('R', 40, 'red'), entry('R', 60, 'run')]);
+    expect(result).toEqual([{ phoneme: 'R', avgScore: 50, examples: ['red', 'run'] }]);
+  });
+
+  it('平均スコアが低い順（苦手順）に並べ、上位limit件に絞る', () => {
+    const result = computeWeakPhonemes(
+      [entry('R', 40, 'red'), entry('TH', 70, 'think'), entry('AE', 90, 'cat'), entry('S', 20, 'sun')],
+      2,
+    );
+    expect(result.map((r) => r.phoneme)).toEqual(['S', 'R']);
+  });
+
+  it('例語はスコアが低い出現を優先し、重複語を除いて最大exampleLimit件にする', () => {
+    const result = computeWeakPhonemes([
+      entry('R', 80, 'red'),
+      entry('R', 20, 'run'),
+      entry('R', 20, 'run'), // 同じ語の重複出現は1件にまとめる
+      entry('R', 50, 'rain'),
+    ]);
+    expect(result[0].examples).toEqual(['run', 'rain']);
+  });
+
+  it('データが無ければ空配列', () => {
+    expect(computeWeakPhonemes([])).toEqual([]);
+  });
+
+  it('exampleLimit引数で例語件数を変えられる', () => {
+    const result = computeWeakPhonemes([entry('R', 40, 'red'), entry('R', 30, 'run'), entry('R', 20, 'rain')], 3, 1);
+    expect(result[0].examples).toHaveLength(1);
+  });
+});
+
+describe('aggregateProsodyFeedback', () => {
+  it('unexpectedBreaks/missingBreaksは合計する', () => {
+    const result = aggregateProsodyFeedback([
+      { unexpectedBreaks: 1, missingBreaks: 0, monotone: false },
+      { unexpectedBreaks: 2, missingBreaks: 1, monotone: false },
+    ]);
+    expect(result).toEqual({ unexpectedBreaks: 3, missingBreaks: 1, monotone: false });
+  });
+
+  it('monotoneはいずれか1件でもtrueならtrue（OR）', () => {
+    const result = aggregateProsodyFeedback([
+      { unexpectedBreaks: 0, missingBreaks: 0, monotone: false },
+      { unexpectedBreaks: 0, missingBreaks: 0, monotone: true },
+    ]);
+    expect(result.monotone).toBe(true);
+  });
+
+  it('空配列なら全て0/false', () => {
+    expect(aggregateProsodyFeedback([])).toEqual({ unexpectedBreaks: 0, missingBreaks: 0, monotone: false });
   });
 });
 
@@ -134,6 +329,27 @@ describe('aggregatePhraseAssessments', () => {
       completenessScore: 40,
       prosodyScore: 50,
     });
+  });
+
+  // ---- M12: weakPhonemes/prosodyFeedbackの統合 ----
+
+  it('全フレーズのphonemeScoresを合わせて低スコア音素トップ3をweakPhonemesに入れる', () => {
+    const a = makePhrase({ phonemeScores: [{ phoneme: 'R', accuracyScore: 30, word: 'red' }] });
+    const b = makePhrase({ phonemeScores: [{ phoneme: 'TH', accuracyScore: 50, word: 'think' }] });
+    const result = aggregatePhraseAssessments([a, b]);
+    expect(result?.weakPhonemes?.map((w) => w.phoneme)).toEqual(['R', 'TH']);
+  });
+
+  it('どのフレーズにも音素データが無ければweakPhonemesはundefined（後方互換）', () => {
+    const result = aggregatePhraseAssessments([makePhrase(), makePhrase()]);
+    expect(result?.weakPhonemes).toBeUndefined();
+  });
+
+  it('全フレーズのprosodyFeedbackを合算する', () => {
+    const a = makePhrase({ prosodyFeedback: { unexpectedBreaks: 1, missingBreaks: 0, monotone: false } });
+    const b = makePhrase({ prosodyFeedback: { unexpectedBreaks: 0, missingBreaks: 2, monotone: true } });
+    const result = aggregatePhraseAssessments([a, b]);
+    expect(result?.prosodyFeedback).toEqual({ unexpectedBreaks: 1, missingBreaks: 2, monotone: true });
   });
 });
 

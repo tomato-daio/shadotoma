@@ -25,7 +25,23 @@
     "addedAt": 1784381733324,
     "articleId": "voa-7997203",
     "part": 1,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "IH": 22,
+      "DH": 9,
+      "AH": 33,
+      "ER": 9,
+      "V": 5,
+      "IY": 19,
+      "R": 23,
+      "S": 16,
+      "TH": 2,
+      "F": 6,
+      "W": 5,
+      "L": 8,
+      "AE": 5,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7997203-p2",
@@ -50,7 +66,23 @@
     "addedAt": 1784381733324,
     "articleId": "voa-7997203",
     "part": 2,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "DH": 9,
+      "AH": 23,
+      "R": 14,
+      "IH": 12,
+      "S": 18,
+      "F": 4,
+      "ER": 10,
+      "AE": 4,
+      "L": 4,
+      "IY": 7,
+      "V": 4,
+      "TH": 2,
+      "W": 3,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7997203-p3",
@@ -81,7 +113,23 @@
     "addedAt": 1784381733324,
     "articleId": "voa-7997203",
     "part": 3,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "R": 21,
+      "AH": 44,
+      "IH": 28,
+      "W": 2,
+      "DH": 13,
+      "V": 8,
+      "ER": 10,
+      "S": 20,
+      "IY": 17,
+      "L": 15,
+      "AE": 8,
+      "F": 5,
+      "SH": 4,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7997203-p4",
@@ -112,7 +160,23 @@
     "addedAt": 1784381733324,
     "articleId": "voa-7997203",
     "part": 4,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "IH": 21,
+      "S": 18,
+      "TH": 7,
+      "R": 25,
+      "IY": 13,
+      "AH": 51,
+      "W": 4,
+      "DH": 8,
+      "L": 21,
+      "F": 7,
+      "ER": 10,
+      "V": 7,
+      "SH": 4,
+      "AE": 4
+    }
   },
   {
     "id": "voa-7997203-p5",
@@ -137,7 +201,22 @@
     "addedAt": 1784381733324,
     "articleId": "voa-7997203",
     "part": 5,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "IY": 9,
+      "AH": 25,
+      "L": 15,
+      "S": 8,
+      "DH": 8,
+      "W": 6,
+      "AE": 5,
+      "V": 7,
+      "R": 11,
+      "IH": 9,
+      "ER": 6,
+      "SH": 1,
+      "F": 2
+    }
   },
   {
     "id": "voa-7997203-p6",
@@ -168,7 +247,22 @@
     "addedAt": 1784381733324,
     "articleId": "voa-7997203",
     "part": 6,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "AH": 32,
+      "ER": 11,
+      "V": 6,
+      "S": 15,
+      "IH": 16,
+      "R": 17,
+      "IY": 15,
+      "W": 10,
+      "DH": 12,
+      "L": 15,
+      "AE": 6,
+      "SH": 3,
+      "F": 3
+    }
   },
   {
     "id": "voa-8002695-p1",
@@ -196,7 +290,23 @@
     "addedAt": 1784381737240,
     "articleId": "voa-8002695",
     "part": 1,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "AH": 31,
+      "L": 12,
+      "IH": 22,
+      "TH": 1,
+      "W": 7,
+      "IY": 6,
+      "R": 19,
+      "ER": 8,
+      "S": 15,
+      "DH": 6,
+      "F": 7,
+      "SH": 3,
+      "AE": 10,
+      "V": 4
+    }
   },
   {
     "id": "voa-8002695-p2",
@@ -233,7 +343,22 @@
     "addedAt": 1784381737240,
     "articleId": "voa-8002695",
     "part": 2,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "S": 24,
+      "R": 22,
+      "L": 23,
+      "AH": 41,
+      "F": 9,
+      "IY": 13,
+      "TH": 2,
+      "DH": 9,
+      "IH": 23,
+      "AE": 7,
+      "V": 4,
+      "W": 7,
+      "ER": 8
+    }
   },
   {
     "id": "voa-8002695-p3",
@@ -267,7 +392,23 @@
     "addedAt": 1784381737240,
     "articleId": "voa-8002695",
     "part": 3,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "DH": 10,
+      "AE": 6,
+      "L": 7,
+      "R": 9,
+      "S": 16,
+      "ER": 4,
+      "IH": 21,
+      "SH": 4,
+      "IY": 9,
+      "W": 8,
+      "F": 5,
+      "AH": 21,
+      "V": 6,
+      "TH": 2
+    }
   },
   {
     "id": "voa-8002695-p4",
@@ -298,7 +439,22 @@
     "addedAt": 1784381737240,
     "articleId": "voa-8002695",
     "part": 4,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "IY": 10,
+      "R": 17,
+      "F": 11,
+      "AH": 32,
+      "S": 27,
+      "AE": 10,
+      "IH": 22,
+      "W": 3,
+      "L": 17,
+      "DH": 10,
+      "ER": 6,
+      "V": 5,
+      "SH": 2
+    }
   },
   {
     "id": "voa-8002695-p5",
@@ -329,7 +485,23 @@
     "addedAt": 1784381737240,
     "articleId": "voa-8002695",
     "part": 5,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "SH": 2,
+      "IY": 7,
+      "R": 15,
+      "F": 6,
+      "AH": 33,
+      "DH": 7,
+      "S": 18,
+      "L": 6,
+      "IH": 16,
+      "V": 3,
+      "W": 4,
+      "AE": 4,
+      "ER": 3,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7980858-p1",
@@ -366,7 +538,23 @@
     "addedAt": 1784381739850,
     "articleId": "voa-7980858",
     "part": 1,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "DH": 10,
+      "AH": 30,
+      "IH": 12,
+      "R": 17,
+      "W": 6,
+      "S": 12,
+      "L": 10,
+      "ER": 7,
+      "TH": 1,
+      "F": 3,
+      "V": 1,
+      "AE": 2,
+      "IY": 5,
+      "SH": 3
+    }
   },
   {
     "id": "voa-7980858-p2",
@@ -409,7 +597,23 @@
     "addedAt": 1784381739850,
     "articleId": "voa-7980858",
     "part": 2,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "AH": 35,
+      "S": 12,
+      "IY": 12,
+      "L": 16,
+      "R": 11,
+      "IH": 17,
+      "ER": 18,
+      "F": 4,
+      "V": 5,
+      "SH": 3,
+      "DH": 6,
+      "W": 8,
+      "AE": 7,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7980858-p3",
@@ -443,7 +647,23 @@
     "addedAt": 1784381739850,
     "articleId": "voa-7980858",
     "part": 3,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "AE": 6,
+      "F": 3,
+      "ER": 10,
+      "R": 15,
+      "SH": 4,
+      "AH": 27,
+      "IY": 11,
+      "IH": 11,
+      "TH": 3,
+      "L": 10,
+      "S": 8,
+      "W": 4,
+      "DH": 8,
+      "V": 6
+    }
   },
   {
     "id": "voa-7980858-p4",
@@ -477,7 +697,22 @@
     "addedAt": 1784381739850,
     "articleId": "voa-7980858",
     "part": 4,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "IH": 8,
+      "W": 7,
+      "F": 12,
+      "DH": 10,
+      "ER": 9,
+      "V": 4,
+      "R": 10,
+      "IY": 8,
+      "AH": 25,
+      "L": 13,
+      "S": 9,
+      "AE": 6,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7980858-p5",
@@ -517,7 +752,22 @@
     "addedAt": 1784381739850,
     "articleId": "voa-7980858",
     "part": 5,
-    "partCount": 5
+    "partCount": 5,
+    "phonemeCounts": {
+      "AE": 5,
+      "F": 4,
+      "ER": 10,
+      "L": 16,
+      "S": 15,
+      "IH": 14,
+      "R": 14,
+      "AH": 37,
+      "DH": 9,
+      "V": 5,
+      "SH": 6,
+      "IY": 16,
+      "W": 3
+    }
   },
   {
     "id": "voa-7983265-p1",
@@ -542,7 +792,23 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 1,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "F": 8,
+      "R": 17,
+      "S": 22,
+      "AH": 32,
+      "IH": 12,
+      "AE": 9,
+      "V": 5,
+      "DH": 8,
+      "IY": 10,
+      "L": 5,
+      "W": 2,
+      "ER": 6,
+      "TH": 1,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7983265-p2",
@@ -570,7 +836,23 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 2,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "DH": 14,
+      "AH": 33,
+      "S": 17,
+      "IY": 13,
+      "AE": 10,
+      "R": 13,
+      "W": 3,
+      "ER": 10,
+      "L": 6,
+      "V": 7,
+      "IH": 8,
+      "TH": 1,
+      "F": 4,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7983265-p3",
@@ -601,7 +883,22 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 3,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "S": 23,
+      "AH": 33,
+      "ER": 10,
+      "DH": 7,
+      "IH": 19,
+      "IY": 12,
+      "F": 6,
+      "R": 15,
+      "V": 3,
+      "L": 11,
+      "AE": 4,
+      "SH": 2,
+      "W": 2
+    }
   },
   {
     "id": "voa-7983265-p4",
@@ -629,7 +926,22 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 4,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "DH": 10,
+      "AH": 29,
+      "R": 15,
+      "S": 13,
+      "IY": 8,
+      "L": 11,
+      "AE": 9,
+      "IH": 9,
+      "ER": 7,
+      "F": 6,
+      "V": 3,
+      "SH": 3,
+      "W": 1
+    }
   },
   {
     "id": "voa-7983265-p5",
@@ -657,7 +969,21 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 5,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "S": 19,
+      "AH": 34,
+      "IH": 14,
+      "DH": 9,
+      "AE": 11,
+      "F": 5,
+      "R": 10,
+      "L": 17,
+      "IY": 15,
+      "ER": 8,
+      "W": 4,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7983265-p6",
@@ -682,7 +1008,22 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 6,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "DH": 11,
+      "R": 11,
+      "IH": 12,
+      "AH": 29,
+      "L": 12,
+      "S": 15,
+      "V": 1,
+      "ER": 10,
+      "IY": 7,
+      "AE": 6,
+      "F": 5,
+      "W": 3,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7983265-p7",
@@ -707,7 +1048,23 @@
     "addedAt": 1784381742576,
     "articleId": "voa-7983265",
     "part": 7,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "DH": 6,
+      "AH": 23,
+      "F": 5,
+      "ER": 6,
+      "IH": 13,
+      "L": 7,
+      "S": 15,
+      "R": 11,
+      "IY": 9,
+      "AE": 7,
+      "TH": 1,
+      "SH": 2,
+      "W": 1,
+      "V": 2
+    }
   },
   {
     "id": "voa-7972239-p1",
@@ -732,7 +1089,22 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 1,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "IH": 12,
+      "S": 15,
+      "AH": 36,
+      "L": 19,
+      "ER": 10,
+      "R": 16,
+      "IY": 11,
+      "SH": 6,
+      "AE": 9,
+      "F": 7,
+      "DH": 5,
+      "V": 2,
+      "W": 3
+    }
   },
   {
     "id": "voa-7972239-p2",
@@ -757,7 +1129,21 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 2,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "S": 15,
+      "IH": 18,
+      "DH": 6,
+      "AH": 18,
+      "SH": 2,
+      "R": 14,
+      "IY": 6,
+      "AE": 7,
+      "L": 8,
+      "ER": 10,
+      "V": 3,
+      "W": 4
+    }
   },
   {
     "id": "voa-7972239-p3",
@@ -791,7 +1177,23 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 3,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "DH": 7,
+      "AH": 39,
+      "IY": 15,
+      "ER": 10,
+      "S": 22,
+      "R": 19,
+      "IH": 26,
+      "L": 20,
+      "V": 8,
+      "SH": 6,
+      "W": 3,
+      "AE": 6,
+      "TH": 1,
+      "F": 2
+    }
   },
   {
     "id": "voa-7972239-p4",
@@ -819,7 +1221,22 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 4,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "SH": 6,
+      "IY": 9,
+      "L": 11,
+      "DH": 11,
+      "AE": 10,
+      "V": 5,
+      "IH": 18,
+      "F": 3,
+      "ER": 7,
+      "S": 11,
+      "AH": 17,
+      "R": 14,
+      "W": 5
+    }
   },
   {
     "id": "voa-7972239-p5",
@@ -844,7 +1261,23 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 5,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "IH": 16,
+      "R": 13,
+      "AH": 17,
+      "F": 5,
+      "W": 5,
+      "L": 9,
+      "AE": 6,
+      "ER": 6,
+      "SH": 4,
+      "S": 6,
+      "IY": 9,
+      "V": 2,
+      "DH": 5,
+      "TH": 2
+    }
   },
   {
     "id": "voa-7972239-p6",
@@ -872,7 +1305,23 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 6,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "TH": 1,
+      "IH": 15,
+      "AH": 26,
+      "L": 10,
+      "S": 17,
+      "R": 9,
+      "ER": 9,
+      "IY": 9,
+      "DH": 6,
+      "F": 1,
+      "AE": 4,
+      "V": 5,
+      "W": 2,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7972239-p7",
@@ -903,7 +1352,22 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 7,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "S": 15,
+      "AH": 31,
+      "V": 14,
+      "DH": 10,
+      "R": 13,
+      "AE": 10,
+      "IH": 24,
+      "F": 2,
+      "L": 7,
+      "SH": 4,
+      "IY": 14,
+      "ER": 6,
+      "W": 4
+    }
   },
   {
     "id": "voa-7972239-p8",
@@ -934,7 +1398,22 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 8,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "DH": 5,
+      "AH": 40,
+      "R": 7,
+      "AE": 12,
+      "IH": 23,
+      "ER": 9,
+      "V": 3,
+      "W": 7,
+      "S": 18,
+      "F": 3,
+      "IY": 6,
+      "L": 16,
+      "SH": 8
+    }
   },
   {
     "id": "voa-7972239-p9",
@@ -965,7 +1444,23 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 9,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "IY": 10,
+      "L": 9,
+      "R": 16,
+      "DH": 8,
+      "AH": 25,
+      "IH": 16,
+      "SH": 2,
+      "AE": 9,
+      "F": 3,
+      "S": 6,
+      "V": 4,
+      "W": 3,
+      "ER": 7,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7972239-p10",
@@ -999,7 +1494,23 @@
     "addedAt": 1784381746317,
     "articleId": "voa-7972239",
     "part": 10,
-    "partCount": 10
+    "partCount": 10,
+    "phonemeCounts": {
+      "IH": 25,
+      "AE": 12,
+      "AH": 33,
+      "R": 17,
+      "L": 17,
+      "IY": 13,
+      "DH": 7,
+      "S": 12,
+      "SH": 8,
+      "ER": 4,
+      "V": 6,
+      "W": 3,
+      "F": 4,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7998765-p1",
@@ -1033,7 +1544,23 @@
     "addedAt": 1784381753945,
     "articleId": "voa-7998765",
     "part": 1,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "W": 7,
+      "IH": 21,
+      "L": 15,
+      "ER": 8,
+      "AH": 26,
+      "R": 20,
+      "V": 6,
+      "DH": 12,
+      "S": 3,
+      "F": 4,
+      "SH": 2,
+      "IY": 3,
+      "AE": 5,
+      "TH": 2
+    }
   },
   {
     "id": "voa-7998765-p2",
@@ -1064,7 +1591,23 @@
     "addedAt": 1784381753945,
     "articleId": "voa-7998765",
     "part": 2,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "DH": 15,
+      "IY": 12,
+      "AH": 33,
+      "AE": 5,
+      "IH": 19,
+      "V": 5,
+      "L": 16,
+      "F": 2,
+      "R": 9,
+      "ER": 5,
+      "S": 16,
+      "W": 5,
+      "SH": 3,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7998765-p3",
@@ -1098,7 +1641,22 @@
     "addedAt": 1784381753945,
     "articleId": "voa-7998765",
     "part": 3,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "W": 6,
+      "IH": 13,
+      "DH": 11,
+      "IY": 8,
+      "S": 7,
+      "L": 17,
+      "ER": 10,
+      "V": 5,
+      "R": 7,
+      "AH": 21,
+      "AE": 8,
+      "F": 3,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7998765-p4",
@@ -1141,7 +1699,23 @@
     "addedAt": 1784381753945,
     "articleId": "voa-7998765",
     "part": 4,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "IY": 7,
+      "W": 6,
+      "IH": 13,
+      "DH": 13,
+      "AH": 25,
+      "R": 18,
+      "F": 13,
+      "S": 10,
+      "ER": 11,
+      "TH": 1,
+      "L": 6,
+      "AE": 3,
+      "V": 6,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7998765-p5",
@@ -1181,7 +1755,21 @@
     "addedAt": 1784381753945,
     "articleId": "voa-7998765",
     "part": 5,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "R": 19,
+      "V": 7,
+      "IH": 26,
+      "L": 15,
+      "S": 11,
+      "AH": 22,
+      "F": 7,
+      "DH": 11,
+      "AE": 2,
+      "W": 8,
+      "ER": 11,
+      "IY": 7
+    }
   },
   {
     "id": "voa-7998765-p6",
@@ -1206,7 +1794,22 @@
     "addedAt": 1784381753945,
     "articleId": "voa-7998765",
     "part": 6,
-    "partCount": 6
+    "partCount": 6,
+    "phonemeCounts": {
+      "AH": 31,
+      "DH": 12,
+      "R": 13,
+      "ER": 9,
+      "F": 3,
+      "S": 9,
+      "L": 11,
+      "IH": 12,
+      "IY": 5,
+      "W": 5,
+      "SH": 1,
+      "V": 5,
+      "AE": 5
+    }
   },
   {
     "id": "voa-7989189-p1",
@@ -1231,7 +1834,23 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 1,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "AH": 30,
+      "S": 30,
+      "R": 11,
+      "ER": 10,
+      "F": 6,
+      "L": 8,
+      "IH": 17,
+      "AE": 11,
+      "V": 3,
+      "IY": 9,
+      "DH": 5,
+      "TH": 5,
+      "SH": 1,
+      "W": 4
+    }
   },
   {
     "id": "voa-7989189-p2",
@@ -1262,7 +1881,22 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 2,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "DH": 12,
+      "AE": 9,
+      "IH": 20,
+      "AH": 34,
+      "S": 21,
+      "R": 19,
+      "L": 9,
+      "IY": 10,
+      "F": 4,
+      "ER": 11,
+      "V": 6,
+      "W": 2,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7989189-p3",
@@ -1296,7 +1930,23 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 3,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "S": 33,
+      "IY": 18,
+      "TH": 4,
+      "IH": 25,
+      "R": 21,
+      "AH": 35,
+      "ER": 14,
+      "DH": 9,
+      "AE": 13,
+      "V": 3,
+      "L": 13,
+      "W": 2,
+      "F": 10,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7989189-p4",
@@ -1324,7 +1974,22 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 4,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "IY": 9,
+      "L": 5,
+      "DH": 8,
+      "AE": 9,
+      "S": 21,
+      "AH": 18,
+      "IH": 15,
+      "ER": 10,
+      "W": 5,
+      "V": 7,
+      "R": 8,
+      "TH": 2,
+      "F": 3
+    }
   },
   {
     "id": "voa-7989189-p5",
@@ -1352,7 +2017,23 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 5,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "AH": 29,
+      "S": 26,
+      "ER": 9,
+      "IY": 1,
+      "W": 7,
+      "IH": 12,
+      "V": 6,
+      "L": 9,
+      "R": 10,
+      "AE": 12,
+      "F": 8,
+      "TH": 2,
+      "DH": 6,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7989189-p6",
@@ -1386,7 +2067,23 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 6,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "DH": 14,
+      "IH": 24,
+      "L": 21,
+      "IY": 12,
+      "V": 7,
+      "S": 33,
+      "R": 20,
+      "AH": 46,
+      "F": 10,
+      "W": 7,
+      "ER": 17,
+      "TH": 5,
+      "AE": 14,
+      "SH": 3
+    }
   },
   {
     "id": "voa-7989189-p7",
@@ -1414,7 +2111,22 @@
     "addedAt": 1784381758813,
     "articleId": "voa-7989189",
     "part": 7,
-    "partCount": 7
+    "partCount": 7,
+    "phonemeCounts": {
+      "S": 21,
+      "DH": 7,
+      "AE": 11,
+      "IH": 19,
+      "F": 4,
+      "L": 13,
+      "IY": 10,
+      "AH": 21,
+      "W": 8,
+      "ER": 8,
+      "V": 6,
+      "R": 15,
+      "TH": 3
+    }
   },
   {
     "id": "voa-7504521-p1",
@@ -1448,7 +2160,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 1,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "W": 6,
+      "IY": 8,
+      "AH": 15,
+      "IH": 17,
+      "DH": 8,
+      "S": 8,
+      "R": 12,
+      "V": 4,
+      "AE": 7,
+      "L": 7,
+      "ER": 1,
+      "SH": 2,
+      "F": 1,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7504521-p2",
@@ -1494,7 +2222,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 2,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 21,
+      "W": 9,
+      "ER": 4,
+      "AH": 39,
+      "SH": 3,
+      "IH": 7,
+      "S": 23,
+      "AE": 7,
+      "L": 18,
+      "IY": 10,
+      "F": 5,
+      "R": 12,
+      "TH": 5,
+      "V": 8
+    }
   },
   {
     "id": "voa-7504521-p3",
@@ -1522,7 +2266,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 3,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "W": 7,
+      "L": 10,
+      "S": 15,
+      "DH": 8,
+      "AH": 18,
+      "AE": 5,
+      "IY": 6,
+      "V": 5,
+      "R": 9,
+      "SH": 3,
+      "ER": 4,
+      "IH": 6,
+      "F": 6,
+      "TH": 2
+    }
   },
   {
     "id": "voa-7504521-p4",
@@ -1559,7 +2319,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 4,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 15,
+      "AH": 26,
+      "IH": 14,
+      "S": 15,
+      "F": 5,
+      "ER": 6,
+      "SH": 1,
+      "R": 15,
+      "W": 10,
+      "IY": 7,
+      "L": 9,
+      "V": 6,
+      "AE": 4,
+      "TH": 3
+    }
   },
   {
     "id": "voa-7504521-p5",
@@ -1614,7 +2390,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 5,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "SH": 3,
+      "AE": 8,
+      "L": 8,
+      "ER": 6,
+      "S": 17,
+      "IY": 16,
+      "AH": 28,
+      "DH": 18,
+      "F": 5,
+      "IH": 11,
+      "V": 4,
+      "W": 8,
+      "TH": 3,
+      "R": 13
+    }
   },
   {
     "id": "voa-7504521-p6",
@@ -1651,7 +2443,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 6,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IY": 1,
+      "W": 9,
+      "R": 6,
+      "AH": 27,
+      "IH": 11,
+      "DH": 15,
+      "S": 9,
+      "AE": 6,
+      "L": 3,
+      "TH": 1,
+      "V": 6,
+      "ER": 3,
+      "SH": 2,
+      "F": 1
+    }
   },
   {
     "id": "voa-7504521-p7",
@@ -1700,7 +2508,22 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 7,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 17,
+      "AH": 24,
+      "IH": 10,
+      "W": 8,
+      "ER": 5,
+      "IY": 5,
+      "S": 7,
+      "L": 7,
+      "TH": 5,
+      "SH": 3,
+      "F": 1,
+      "R": 11,
+      "AE": 2
+    }
   },
   {
     "id": "voa-7504521-p8",
@@ -1734,7 +2557,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 8,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 12,
+      "AH": 26,
+      "L": 10,
+      "AE": 6,
+      "IH": 14,
+      "S": 11,
+      "R": 7,
+      "IY": 6,
+      "V": 3,
+      "W": 7,
+      "SH": 2,
+      "F": 1,
+      "ER": 2,
+      "TH": 2
+    }
   },
   {
     "id": "voa-7504521-p9",
@@ -1768,7 +2607,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 9,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 19,
+      "AH": 33,
+      "S": 13,
+      "L": 17,
+      "ER": 10,
+      "IH": 14,
+      "R": 10,
+      "F": 4,
+      "W": 9,
+      "IY": 6,
+      "V": 7,
+      "AE": 7,
+      "TH": 1,
+      "SH": 2
+    }
   },
   {
     "id": "voa-7504521-p10",
@@ -1808,7 +2663,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 10,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IH": 19,
+      "AE": 4,
+      "V": 3,
+      "AH": 24,
+      "F": 3,
+      "DH": 15,
+      "R": 12,
+      "W": 9,
+      "ER": 7,
+      "S": 8,
+      "SH": 6,
+      "L": 11,
+      "IY": 7,
+      "TH": 3
+    }
   },
   {
     "id": "voa-7504521-p11",
@@ -1842,7 +2713,22 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 11,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IY": 11,
+      "W": 2,
+      "AE": 14,
+      "R": 11,
+      "DH": 11,
+      "AH": 24,
+      "S": 14,
+      "L": 14,
+      "IH": 12,
+      "ER": 11,
+      "V": 4,
+      "F": 6,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7504521-p12",
@@ -1873,7 +2759,21 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 12,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "ER": 11,
+      "AE": 7,
+      "S": 9,
+      "DH": 14,
+      "AH": 13,
+      "R": 14,
+      "IH": 8,
+      "L": 6,
+      "IY": 7,
+      "F": 3,
+      "W": 2,
+      "TH": 2
+    }
   },
   {
     "id": "voa-7504521-p13",
@@ -1913,7 +2813,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 13,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "W": 14,
+      "DH": 17,
+      "AH": 26,
+      "F": 6,
+      "R": 13,
+      "S": 6,
+      "L": 11,
+      "AE": 6,
+      "ER": 7,
+      "IY": 13,
+      "SH": 2,
+      "IH": 10,
+      "TH": 1,
+      "V": 2
+    }
   },
   {
     "id": "voa-7504521-p14",
@@ -1959,7 +2875,22 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 14,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 16,
+      "V": 7,
+      "R": 15,
+      "IY": 9,
+      "W": 13,
+      "AH": 29,
+      "SH": 2,
+      "S": 12,
+      "IH": 15,
+      "AE": 6,
+      "L": 14,
+      "ER": 8,
+      "F": 5
+    }
   },
   {
     "id": "voa-7504521-p15",
@@ -1993,7 +2924,22 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 15,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IH": 10,
+      "DH": 6,
+      "AH": 18,
+      "AE": 6,
+      "L": 5,
+      "V": 1,
+      "ER": 6,
+      "W": 7,
+      "S": 6,
+      "R": 6,
+      "IY": 6,
+      "TH": 1,
+      "SH": 1
+    }
   },
   {
     "id": "voa-7504521-p16",
@@ -2027,7 +2973,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 16,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 13,
+      "AH": 23,
+      "AE": 5,
+      "L": 8,
+      "IH": 17,
+      "S": 5,
+      "W": 10,
+      "R": 14,
+      "ER": 5,
+      "IY": 7,
+      "SH": 2,
+      "F": 5,
+      "V": 3,
+      "TH": 1
+    }
   },
   {
     "id": "voa-7504521-p17",
@@ -2064,7 +3026,23 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 17,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "AH": 25,
+      "IY": 8,
+      "W": 6,
+      "S": 6,
+      "ER": 6,
+      "DH": 16,
+      "AE": 11,
+      "V": 2,
+      "TH": 1,
+      "R": 8,
+      "IH": 11,
+      "L": 3,
+      "SH": 1,
+      "F": 1
+    }
   },
   {
     "id": "voa-7504521-p18",
@@ -2113,7 +3091,22 @@
     "addedAt": 1784381766357,
     "articleId": "voa-7504521",
     "part": 18,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 29,
+      "AH": 41,
+      "AE": 14,
+      "IH": 19,
+      "W": 15,
+      "ER": 6,
+      "R": 14,
+      "S": 17,
+      "SH": 3,
+      "L": 23,
+      "F": 10,
+      "IY": 18,
+      "V": 4
+    }
   },
   {
     "id": "voa-2572601-p1",
@@ -2147,7 +3140,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 1,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "ER": 3,
+      "S": 10,
+      "R": 12,
+      "IY": 5,
+      "AH": 25,
+      "IH": 17,
+      "L": 7,
+      "DH": 5,
+      "W": 4,
+      "V": 4,
+      "AE": 6,
+      "F": 4,
+      "SH": 2
+    }
   },
   {
     "id": "voa-2572601-p2",
@@ -2187,7 +3195,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 2,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "R": 17,
+      "W": 9,
+      "AH": 24,
+      "DH": 20,
+      "L": 15,
+      "AE": 4,
+      "S": 10,
+      "IY": 15,
+      "V": 7,
+      "ER": 5,
+      "TH": 3,
+      "IH": 11,
+      "SH": 3,
+      "F": 8
+    }
   },
   {
     "id": "voa-2572601-p3",
@@ -2224,7 +3248,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 3,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 18,
+      "AH": 24,
+      "S": 12,
+      "L": 9,
+      "F": 4,
+      "R": 9,
+      "W": 13,
+      "V": 8,
+      "IH": 8,
+      "IY": 9,
+      "AE": 8,
+      "SH": 2,
+      "ER": 3,
+      "TH": 3
+    }
   },
   {
     "id": "voa-2572601-p4",
@@ -2258,7 +3298,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 4,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 15,
+      "AH": 26,
+      "W": 8,
+      "V": 5,
+      "ER": 4,
+      "IY": 7,
+      "R": 11,
+      "L": 7,
+      "IH": 13,
+      "SH": 3,
+      "F": 5,
+      "S": 10,
+      "AE": 6
+    }
   },
   {
     "id": "voa-2572601-p5",
@@ -2295,7 +3350,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 5,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IY": 8,
+      "L": 5,
+      "IH": 13,
+      "AE": 7,
+      "DH": 18,
+      "AH": 27,
+      "F": 5,
+      "S": 9,
+      "ER": 8,
+      "W": 11,
+      "R": 9,
+      "SH": 2,
+      "TH": 2,
+      "V": 4
+    }
   },
   {
     "id": "voa-2572601-p6",
@@ -2335,7 +3406,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 6,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IY": 11,
+      "L": 17,
+      "IH": 17,
+      "DH": 7,
+      "AH": 22,
+      "F": 3,
+      "R": 7,
+      "V": 2,
+      "S": 14,
+      "W": 6,
+      "ER": 7,
+      "SH": 2,
+      "AE": 4,
+      "TH": 2
+    }
   },
   {
     "id": "voa-2572601-p7",
@@ -2366,7 +3453,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 7,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "AE": 8,
+      "IY": 8,
+      "W": 11,
+      "V": 8,
+      "DH": 13,
+      "AH": 28,
+      "R": 13,
+      "F": 8,
+      "L": 12,
+      "S": 15,
+      "IH": 13,
+      "ER": 4,
+      "TH": 2
+    }
   },
   {
     "id": "voa-2572601-p8",
@@ -2397,7 +3499,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 8,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 18,
+      "R": 11,
+      "AH": 27,
+      "S": 11,
+      "AE": 4,
+      "V": 7,
+      "SH": 1,
+      "IH": 7,
+      "W": 7,
+      "L": 13,
+      "IY": 5,
+      "ER": 1,
+      "F": 5,
+      "TH": 1
+    }
   },
   {
     "id": "voa-2572601-p9",
@@ -2434,7 +3552,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 9,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "AE": 9,
+      "DH": 16,
+      "AH": 36,
+      "R": 15,
+      "W": 14,
+      "ER": 7,
+      "F": 6,
+      "L": 9,
+      "S": 11,
+      "V": 6,
+      "IY": 12,
+      "IH": 15,
+      "SH": 2,
+      "TH": 1
+    }
   },
   {
     "id": "voa-2572601-p10",
@@ -2474,7 +3608,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 10,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 18,
+      "IH": 15,
+      "S": 24,
+      "AH": 19,
+      "ER": 4,
+      "R": 11,
+      "IY": 7,
+      "AE": 6,
+      "F": 4,
+      "L": 12,
+      "SH": 2,
+      "W": 9,
+      "TH": 2,
+      "V": 2
+    }
   },
   {
     "id": "voa-2572601-p11",
@@ -2511,7 +3661,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 11,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 18,
+      "AH": 32,
+      "AE": 9,
+      "ER": 5,
+      "V": 4,
+      "S": 11,
+      "IY": 9,
+      "W": 10,
+      "R": 15,
+      "IH": 11,
+      "TH": 3,
+      "L": 10,
+      "F": 2,
+      "SH": 1
+    }
   },
   {
     "id": "voa-2572601-p12",
@@ -2542,7 +3708,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 12,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 13,
+      "W": 6,
+      "ER": 4,
+      "L": 8,
+      "AH": 15,
+      "IH": 6,
+      "S": 9,
+      "V": 4,
+      "TH": 1,
+      "AE": 9,
+      "SH": 1,
+      "IY": 5,
+      "R": 6
+    }
   },
   {
     "id": "voa-2572601-p13",
@@ -2582,7 +3763,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 13,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 11,
+      "AH": 16,
+      "L": 6,
+      "S": 16,
+      "IY": 7,
+      "IH": 13,
+      "R": 6,
+      "ER": 7,
+      "W": 1,
+      "AE": 4,
+      "TH": 2,
+      "SH": 1,
+      "V": 2
+    }
   },
   {
     "id": "voa-2572601-p14",
@@ -2628,7 +3824,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 14,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IH": 22,
+      "W": 11,
+      "AE": 12,
+      "L": 13,
+      "IY": 12,
+      "DH": 16,
+      "AH": 33,
+      "V": 4,
+      "TH": 1,
+      "S": 12,
+      "F": 7,
+      "R": 11,
+      "ER": 7,
+      "SH": 2
+    }
   },
   {
     "id": "voa-2572601-p15",
@@ -2653,7 +3865,20 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 15,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "IY": 5,
+      "L": 6,
+      "W": 5,
+      "S": 8,
+      "IH": 5,
+      "AH": 12,
+      "V": 4,
+      "SH": 1,
+      "AE": 2,
+      "R": 3,
+      "DH": 3
+    }
   },
   {
     "id": "voa-2572601-p16",
@@ -2702,7 +3927,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 16,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 22,
+      "AH": 40,
+      "L": 25,
+      "S": 20,
+      "AE": 14,
+      "IH": 5,
+      "IY": 17,
+      "R": 11,
+      "ER": 3,
+      "F": 6,
+      "V": 4,
+      "W": 8,
+      "SH": 2
+    }
   },
   {
     "id": "voa-2572601-p17",
@@ -2742,7 +3982,23 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 17,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "F": 3,
+      "AH": 24,
+      "L": 14,
+      "IY": 6,
+      "DH": 12,
+      "ER": 10,
+      "S": 10,
+      "V": 4,
+      "W": 5,
+      "R": 12,
+      "IH": 9,
+      "AE": 5,
+      "SH": 3,
+      "TH": 2
+    }
   },
   {
     "id": "voa-2572601-p18",
@@ -2791,6 +4047,22 @@
     "addedAt": 1784381769291,
     "articleId": "voa-2572601",
     "part": 18,
-    "partCount": 18
+    "partCount": 18,
+    "phonemeCounts": {
+      "DH": 19,
+      "W": 12,
+      "ER": 8,
+      "AE": 4,
+      "L": 10,
+      "AH": 33,
+      "S": 18,
+      "IH": 20,
+      "R": 21,
+      "V": 7,
+      "TH": 1,
+      "IY": 7,
+      "F": 9,
+      "SH": 1
+    }
   }
 ]

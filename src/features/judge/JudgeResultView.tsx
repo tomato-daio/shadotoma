@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { WordMark } from '../../lib/align';
 import type { AzurePronunciationResult, AzureWordScore, JudgeResult } from '../../lib/db';
 import type { PhenomenonType, PreviousIssueOutcome } from '../../lib/phenomena';
+import { generateAzureComments } from './azureComments';
 import { worstWords } from './azurePronunciation';
 
 export interface JudgeResultViewProps {
@@ -168,7 +169,34 @@ function AzureScoreCard({ azure }: { azure: AzurePronunciationResult }) {
           </ul>
         </div>
       ) : null}
+
+      <AzureCommentsList azure={azure} />
     </section>
+  );
+}
+
+/**
+ * Azureコメント（DESIGN.md §8c M12）。weakPhonemes/prosodyFeedbackのどちらも無い過去データ
+ * （M12以前の提出）では欄ごと非表示にする（DESIGN.md §8c M12: 「過去データでweakPhonemes等が
+ * 無い場合はコメント欄を出さない」）。
+ */
+function AzureCommentsList({ azure }: { azure: AzurePronunciationResult }) {
+  if (azure.weakPhonemes === undefined && azure.prosodyFeedback === undefined) return null;
+  const comments = generateAzureComments(azure);
+  if (comments.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-1 border-t border-neutral-100 pt-2">
+      <p className="text-xs font-medium text-neutral-500">コメント</p>
+      <ul className="flex flex-col gap-1.5 text-xs text-neutral-700">
+        {comments.map((c, i) => (
+          <li key={i} className="flex gap-1.5">
+            <span className="text-tomato-500">・</span>
+            <span>{c}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

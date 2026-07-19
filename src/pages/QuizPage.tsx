@@ -119,11 +119,16 @@ export function QuizPage() {
     if (!sections || !articleId || graded) return;
     let correct = 0;
     let total = 0;
+    // DESIGN.md §8d（M13）: 不正解だった空欄の正答語を集める。weakness.tsの「苦手単語
+    // （missed/sub/Azure低スコア語/クイズ誤答が2回以上重なった語）」の集計対象になる。
+    const wrongWords: string[] = [];
     for (const section of sections) {
       for (const blank of section.blanks) {
         total += 1;
         if (isBlankCorrect(answers.get(blankKey(section.material.id, blank)) ?? '', blank.answer)) {
           correct += 1;
+        } else {
+          wrongWords.push(blank.answer);
         }
       }
     }
@@ -139,6 +144,7 @@ export function QuizPage() {
         total,
         correct,
         createdAt: Date.now(),
+        wrongWords,
       });
     } finally {
       setSaving(false);

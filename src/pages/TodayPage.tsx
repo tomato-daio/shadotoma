@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { recommendMaterials, type MaterialRecommendation } from '../features/insights/recommend';
+import { buildWeaknessProfile } from '../features/insights/weakness';
 import { articleHeadingTitle } from '../lib/articleTitle';
-import { getAllMaterialProgress, getAllPracticedDates, type Material } from '../lib/db';
+import { getAllMaterialProgress, getAllPracticedDates, getAllQuizResults, getAllSubmissions, type Material } from '../lib/db';
 import { calcStreak, learningDate } from '../lib/dates';
 import { computeDayNumber, getWizardSteps, latestDate } from '../lib/practiceFlow';
 import { useMaterialsStore } from '../stores/useMaterialsStore';
@@ -23,6 +25,7 @@ export function TodayPage() {
   const [streak, setStreak] = useState(0);
   const [activeInfo, setActiveInfo] = useState<ActiveMaterialInfo | null>(null);
   const [quizSuggestion, setQuizSuggestion] = useState<QuizSuggestion | null>(null);
+  const [recommendations, setRecommendations] = useState<MaterialRecommendation[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -87,6 +90,22 @@ export function TodayPage() {
     };
   }, [loaded, materials]);
 
+  // 「あなたへのおすすめ」カード（DESIGN.md §8d M13）。弱点プロファイルから上位2件を推薦する。
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    void Promise.all([getAllSubmissions(), getAllQuizResults(), getAllMaterialProgress()]).then(
+      ([submissions, quizResults, progresses]) => {
+        if (cancelled) return;
+        const profile = buildWeaknessProfile(submissions, quizResults);
+        setRecommendations(recommendMaterials(profile, materials, progresses));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, materials]);
+
   return (
     <div className="flex flex-col gap-6 p-4">
       <header className="flex items-center justify-between">
@@ -124,6 +143,26 @@ export function TodayPage() {
           </Link>
         </section>
       )}
+
+      {recommendations.length > 0 ? (
+        <section className="flex flex-col gap-2 rounded-xl border border-neutral-200 p-4">
+          <p className="text-sm font-medium text-neutral-700">あなたへのおすすめ</p>
+          <ul className="flex flex-col gap-2">
+            {recommendations.map((r) => (
+              <li key={r.material.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/practice/${r.material.id}`)}
+                  className="flex w-full flex-col gap-1 rounded-lg border border-neutral-100 bg-neutral-50/60 p-3 text-left active:bg-neutral-100"
+                >
+                  <span className="truncate text-sm font-medium text-neutral-800">{r.material.title}</span>
+                  <span className="text-xs text-neutral-500">{r.reason}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {quizSuggestion ? (
         <section className="flex flex-col gap-2 rounded-xl border border-tomato-200 bg-tomato-50/50 p-4">

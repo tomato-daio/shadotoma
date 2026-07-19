@@ -56,6 +56,7 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sentencesFromText } from '../src/lib/sentences.ts';
+import { annotatePhonemes } from './annotate-phonemes.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -759,6 +760,7 @@ async function main() {
     await refreshExisting(index);
     await writeFile(INDEX_PATH, `${JSON.stringify(index, null, 2)}\n`, 'utf-8');
     console.log('index.json を再生成しました。');
+    await annotatePhonemes();
     return;
   }
 
@@ -768,6 +770,7 @@ async function main() {
     await writeFile(INDEX_PATH, `${JSON.stringify(newIndex, null, 2)}\n`, 'utf-8');
     printVerificationSummary(reports);
     console.log('index.json を再生成しました。');
+    await annotatePhonemes();
     return;
   }
 
@@ -869,6 +872,10 @@ async function main() {
   await writeFile(INDEX_PATH, `${JSON.stringify(index, null, 2)}\n`, 'utf-8');
   printVerificationSummary(reports);
   console.log(`完了: ${added}件追加。index.json 合計 ${index.length}件。`);
+
+  // DESIGN.md §8d: fetch-voaの最後にannotate-phonemesを自動実行し、index.jsonの
+  // phonemeCountsを最新のsentencesと同期させる。
+  await annotatePhonemes();
 }
 
 main().catch((err) => {

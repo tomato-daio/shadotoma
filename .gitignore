@@ -13,6 +13,10 @@ dev-dist
 # test / coverage
 coverage
 
+# scripts working cache (annotate-phonemes.mjs: CMUdict本体。パブリックドメインだが
+# リポジトリには含めずPCでキャッシュのみ — DESIGN.md §8d)
+scripts/.cache/
+
 # editor
 .vscode/*
 !.vscode/extensions.json
