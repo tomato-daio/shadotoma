@@ -11,6 +11,7 @@ import { alignWords, buildScriptWords } from '../../lib/align';
 import { decodeToMono16k } from '../../lib/audio';
 import type { JudgeResult, Sentence } from '../../lib/db';
 import { computeMatchRate, computeWpm, generateFeedback } from '../../lib/feedback';
+import { comparePreviousIssues, detectPhenomena, type PhenomenonIssue } from '../../lib/phenomena';
 import { transcribeAudio, type WhisperProgressCallback } from './whisper';
 
 export interface RunJudgeParams {
@@ -22,6 +23,8 @@ export interface RunJudgeParams {
   referenceDurationSec?: number;
   /** 直近の提出のmatchRate（前回比コメント用）。 */
   previousMatchRate?: number;
+  /** 同一教材の前回提出（judge付き最新）のissues。指定時のみ前回比較を行う（DESIGN.md §8 5b）。 */
+  previousIssues?: PhenomenonIssue[];
   onProgress?: WhisperProgressCallback;
 }
 
@@ -31,7 +34,8 @@ export interface RunJudgeOutput {
 }
 
 export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> {
-  const { audioBlob, sentences, recordingDurationSec, referenceDurationSec, previousMatchRate, onProgress } = params;
+  const { audioBlob, sentences, recordingDurationSec, referenceDurationSec, previousMatchRate, previousIssues, onProgress } =
+    params;
 
   const pcm = await decodeToMono16k(audioBlob);
   const transcript = await transcribeAudio(pcm, onProgress);
@@ -47,13 +51,23 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
       ? computeWpm(scriptWords.length, referenceDurationSec)
       : undefined;
 
-  const { goodPoints, devPoints } = generateFeedback({
+  // DESIGN.md §8 5b: 音声現象の検出と、前回提出issuesとの比較（該当語が今回okになったか）。
+  const detectedIssues = detectPhenomena(sentences, wordMarks);
+  const previousIssueOutcomes = previousIssues ? comparePreviousIssues(previousIssues, wordMarks) : undefined;
+
+  const {
+    goodPoints,
+    devPoints,
+    issues,
+  } = generateFeedback({
     wordMarks,
     sentences,
     insertions,
     wpm,
     referenceWpm,
     previousMatchRate,
+    issues: detectedIssues,
+    previousIssueOutcomes,
   });
 
   const judge: JudgeResult = {
@@ -63,6 +77,8 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
     goodPoints,
     devPoints,
     engine: 'whisper-local',
+    issues,
+    previousIssueOutcomes,
   };
 
   return { transcript, judge };

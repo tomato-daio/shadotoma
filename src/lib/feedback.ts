@@ -10,6 +10,7 @@
  */
 
 import type { WordMark } from './align';
+import { prioritizeIssues, type PhenomenonIssue, type PhenomenonType, type PreviousIssueOutcome } from './phenomena';
 
 export interface SentenceLike {
   en: string;
@@ -26,11 +27,17 @@ export interface FeedbackInput {
   referenceWpm?: number;
   /** 前回提出のmatchRate。無ければ前回比の言及は行わない。 */
   previousMatchRate?: number;
+  /** phenomena.detectPhenomenaの検出結果（生データ・未ソート可。DESIGN.md §8 5b）。 */
+  issues?: PhenomenonIssue[];
+  /** 前回提出issuesの改善判定（phenomena.comparePreviousIssues）。Good Pointの「前回指摘が改善」に使う。 */
+  previousIssueOutcomes?: PreviousIssueOutcome[];
 }
 
 export interface FeedbackResult {
   goodPoints: string[];
   devPoints: string[];
+  /** 今回のDevelopment Pointの根拠にした音声現象（優先度順・最大3件。JudgeResult.issuesにそのまま保存する）。 */
+  issues: PhenomenonIssue[];
 }
 
 const GOOD_POINTS_COUNT = 3;
@@ -139,6 +146,36 @@ function truncateForDisplay(text: string, maxLength = 60): string {
   return `${text.slice(0, maxLength)}…`;
 }
 
+/** 音声現象タイプの日本語ラベル（Good Point「前回指摘の◯◯が改善」等の表示に使う）。 */
+const PHENOMENON_LABEL: Record<PhenomenonType, string> = {
+  linking: '連結',
+  flap: 'フラップ（tの軽い音）',
+  elision: '脱落',
+  weak: '弱形',
+  ending: '語尾(-s/-ed)',
+};
+
+/**
+ * 音声現象の指摘をカタカナヒント付きのDevelopment Point文言にする（DESIGN.md §8 5b）。
+ * カタカナ化は簡易でよい方針のとおり、対象語ペアの列挙＋現象名の説明＋固定の例示のみで構成し、
+ * 任意の語を無理に自動カタカナ変換することはしない。
+ */
+function phenomenonHint(issue: PhenomenonIssue): string {
+  const words = `「${issue.words.join(' ')}」`;
+  switch (issue.type) {
+    case 'linking':
+      return `${words} の連結（例: turned on→「ターンドン」のように、前の語の子音と次の語の母音がつながって1語のように聞こえます）が言えていません。`;
+    case 'flap':
+      return `${words} のt（例: water→「ワラ」のように、軽い「ラ」行の音になります）が抜けています。`;
+    case 'elision':
+      return `${words} の脱落（例: next day→「ネクスデイ」のように、前の語の最後の子音がほとんど聞こえなくなります）が抜けています。`;
+    case 'weak':
+      return `${words} の弱形（機能語は力を抜いて弱く速く発音されるため聞き取りにくくなります）が抜けています。`;
+    case 'ending':
+      return `${words} の語尾-s/-ed（例: wanted→「ワニッ(ト)」寄りに、語尾が弱くほとんど聞こえなくなります）が抜けています。`;
+  }
+}
+
 /**
  * Good Point / Development Pointをルールベースで各3件生成する（DESIGN.md §8手順5）。
  * 条件に当てはまるルールを優先度順に評価し、上位3件を採用する。3件に満たない場合は
@@ -153,6 +190,9 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   const insertionsCount = input.insertions?.length ?? 0;
   // Whisperが実際に認識した語数の目安（スクリプトに対応した語 + 対応しない挿入語）。
   const recognizedWordCount = matchedCount + subCount + insertionsCount;
+  // DESIGN.md §8 5b: 音声現象の検出結果を優先度順（同一typeの多発>単発）に3件へ絞る。
+  const topIssues = prioritizeIssues(input.issues ?? [], DEV_POINTS_COUNT);
+  const improvedPreviousIssues = (input.previousIssueOutcomes ?? []).filter((o) => o.improved);
 
   const goodCandidates: string[] = [];
   const devCandidates: string[] = [];
@@ -163,6 +203,13 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   }
 
   // --- Good Points ---
+
+  // 前回指摘の音声現象が改善していれば、他のGood Pointより最優先で採用する（DESIGN.md §8 5b）。
+  for (const outcome of improvedPreviousIssues) {
+    goodCandidates.push(
+      `前回指摘した「${outcome.words.join(' ')}」の${PHENOMENON_LABEL[outcome.type]}が改善していました。`,
+    );
+  }
 
   const streak = longestOkStreak(wordMarks);
   if (streak && streak.length >= NOTABLE_STREAK_MIN_LENGTH) {
@@ -198,6 +245,12 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   }
 
   // --- Development Points ---
+
+  // 音声現象ベースの指摘（DESIGN.md §8 5b）を一般指摘より優先する。3件に満たない場合のみ
+  // 以降の一般指摘（missed集中文など）で補う。
+  for (const issue of topIssues) {
+    devCandidates.push(phenomenonHint(issue));
+  }
 
   const worstSentence = findWorstSentence(wordMarks, sentences);
   if (worstSentence && worstSentence.text) {
@@ -243,7 +296,7 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   const goodPoints = fillToCount(goodCandidates, GOOD_POINTS_COUNT, GENERIC_GOOD_FALLBACKS, matchRatePercent);
   const devPoints = fillToCount(devCandidates, DEV_POINTS_COUNT, GENERIC_DEV_FALLBACKS, matchRatePercent);
 
-  return { goodPoints, devPoints };
+  return { goodPoints, devPoints, issues: topIssues };
 }
 
 const GENERIC_GOOD_FALLBACKS = [

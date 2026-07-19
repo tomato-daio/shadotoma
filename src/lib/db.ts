@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { PhenomenonIssue, PreviousIssueOutcome } from './phenomena';
 
 export type PracticeStep = 'listening' | 'script' | 'overlapping' | 'shadowing';
 
@@ -50,6 +51,10 @@ export interface JudgeResult {
   goodPoints: string[]; // 3件
   devPoints: string[]; // 3件
   engine: 'whisper-local' | 'manual';
+  // ---- 音声現象ベースの指摘と前回比較（M7・DESIGN.md §8 5b）----
+  // 既存データ（issuesを持たないJudgeResult）はoptionalのため後方互換。
+  issues?: PhenomenonIssue[]; // Development Pointの根拠にした音声現象（優先度順・最大3件）
+  previousIssueOutcomes?: PreviousIssueOutcome[]; // 前回提出issuesの改善判定（前回提出が無い/issues無しなら未設定）
 }
 
 // store: submissions（提出=録音+添削結果）

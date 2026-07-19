@@ -90,7 +90,7 @@ describe('alignWords', () => {
     expect(result.wordMarks).toEqual([
       { word: 'I', si: 0, status: 'ok' },
       { word: 'like', si: 0, status: 'ok' },
-      { word: 'cats', si: 0, status: 'sub' },
+      { word: 'cats', si: 0, status: 'sub', recognized: 'dogs' },
     ]);
     expect(result.insertions).toEqual([]);
   });

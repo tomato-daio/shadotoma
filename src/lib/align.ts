@@ -16,6 +16,12 @@ export interface WordMark {
   /** 文index（Material.sentencesのインデックス）。 */
   si: number;
   status: WordStatus;
+  /**
+   * status==='sub'のときに実際に認識された語（表示用の原文のまま）。
+   * DESIGN.md §8 5b（音声現象検出の語尾-s/-ed判定）で、スクリプト語と認識語の語幹比較に使う。
+   * status==='sub'以外では設定しない。
+   */
+  recognized?: string;
 }
 
 export interface ScriptWord {
@@ -169,11 +175,13 @@ export function alignWords(scriptWords: ScriptWord[], recognizedWords: string[])
       const isMatch = scriptNorm[i - 1] === recognizedNorm[j - 1];
       const diagScore = dp[i - 1][j - 1] + (isMatch ? MATCH_SCORE : MISMATCH_SCORE);
       if (dp[i][j] === diagScore) {
-        marksReversed.push({
+        const mark: WordMark = {
           word: scriptWords[i - 1].word,
           si: scriptWords[i - 1].si,
           status: isMatch ? 'ok' : 'sub',
-        });
+        };
+        if (!isMatch) mark.recognized = recognizedWords[j - 1];
+        marksReversed.push(mark);
         i -= 1;
         j -= 1;
         continue;

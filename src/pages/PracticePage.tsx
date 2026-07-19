@@ -107,7 +107,8 @@ export function PracticePage() {
         getSubmissionsByMaterial(materialId),
         loadAudioDuration(blob),
       ]);
-      const prevMatchRate = previousSubs.find((s) => s.judge)?.judge?.matchRate;
+      const previousJudge = previousSubs.find((s) => s.judge)?.judge;
+      const prevMatchRate = previousJudge?.matchRate;
       setPreviousMatchRate(prevMatchRate);
 
       const { transcript, judge } = await runJudge({
@@ -116,6 +117,7 @@ export function PracticePage() {
         recordingDurationSec,
         referenceDurationSec: material!.durationSec,
         previousMatchRate: prevMatchRate,
+        previousIssues: previousJudge?.issues,
         onProgress: (event) => {
           setJudgeStatus(event.phase);
           setJudgeProgress(event.progress ?? null);

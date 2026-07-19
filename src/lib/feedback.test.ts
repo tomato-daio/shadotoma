@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WordMark } from './align';
 import { computeMatchRate, computeWpm, generateFeedback, longestOkStreak } from './feedback';
+import type { PhenomenonIssue, PreviousIssueOutcome } from './phenomena';
 
 function mark(word: string, si: number, status: WordMark['status']): WordMark {
   return { word, si, status };
@@ -183,5 +184,82 @@ describe('generateFeedback', () => {
     const { goodPoints, devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 0, insertions: [] });
     expect(goodPoints.some((p) => p.includes('付け足すことなく'))).toBe(false);
     expect(devPoints[0]).toContain('音声がほとんど認識できませんでした');
+  });
+
+  // DESIGN.md §8 5b: 音声現象ベースの指摘と前回比較
+  describe('issues（音声現象ベースの指摘）', () => {
+    function issue(type: PhenomenonIssue['type'], words: string[], si = 0): PhenomenonIssue {
+      return { type, words, si };
+    }
+
+    it('issuesをカタカナヒント付きのDevelopment Pointに変換し、issuesとして返す', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('linking', ['turned', 'on'])];
+      const result = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(result.devPoints.some((p) => p.includes('turned on') && p.includes('連結'))).toBe(true);
+      expect(result.issues).toEqual(issues);
+    });
+
+    it('4件以上あるissuesは同一typeの多発を優先して3件に絞る', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [
+        issue('weak', ['of']),
+        issue('linking', ['turned', 'on']),
+        issue('weak', ['to']),
+        issue('weak', ['for']),
+      ];
+      const result = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(result.issues).toHaveLength(3);
+      expect(result.issues.every((i) => i.type === 'weak')).toBe(true);
+      expect(result.devPoints.filter((p) => p.includes('弱形'))).toHaveLength(3);
+    });
+
+    it('issuesが3件に満たない場合は既存の一般指摘（missed集中文など）で補う', () => {
+      const wordMarks = [
+        ...buildWordMarks(0, ['The', 'quick', 'brown', 'fox', 'jumps'], ['ok', 'missed', 'missed', 'missed', 'ok']),
+        ...buildWordMarks(1, ['She', 'sells', 'seashells'], ['ok', 'ok', 'ok']),
+      ];
+      const issues = [issue('weak', ['of'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toHaveLength(3);
+      expect(devPoints.some((p) => p.includes('弱形'))).toBe(true);
+      expect(devPoints.some((p) => p.includes(SENTENCES[0].en))).toBe(true);
+    });
+
+    it('issuesを渡さなければ従来どおり一般指摘のみでdevPointsを構成する（後方互換）', () => {
+      const wordMarks = buildWordMarks(0, ['The', 'quick', 'brown'], ['ok', 'ok', 'ok']);
+      const result = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100 });
+      expect(result.issues).toEqual([]);
+      expect(result.devPoints).toHaveLength(3);
+    });
+  });
+
+  describe('previousIssueOutcomes（前回比較）', () => {
+    it('前回指摘が改善していればGood Pointの最優先に採用する', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const previousIssueOutcomes: PreviousIssueOutcome[] = [
+        { type: 'linking', words: ['turned', 'on'], improved: true },
+      ];
+      const { goodPoints } = generateFeedback({
+        wordMarks,
+        sentences: SENTENCES,
+        wpm: 100,
+        previousIssueOutcomes,
+      });
+      expect(goodPoints[0]).toContain('turned on');
+      expect(goodPoints[0]).toContain('改善');
+    });
+
+    it('改善していない前回指摘（improved:false）はGood Pointに採用しない', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const previousIssueOutcomes: PreviousIssueOutcome[] = [{ type: 'weak', words: ['of'], improved: false }];
+      const { goodPoints } = generateFeedback({
+        wordMarks,
+        sentences: SENTENCES,
+        wpm: 100,
+        previousIssueOutcomes,
+      });
+      expect(goodPoints.some((p) => p.includes('of') && p.includes('改善'))).toBe(false);
+    });
   });
 });

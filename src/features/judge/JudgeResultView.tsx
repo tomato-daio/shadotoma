@@ -1,5 +1,6 @@
 import type { WordMark } from '../../lib/align';
 import type { JudgeResult } from '../../lib/db';
+import type { PhenomenonType, PreviousIssueOutcome } from '../../lib/phenomena';
 
 export interface JudgeResultViewProps {
   judge: JudgeResult;
@@ -45,7 +46,42 @@ export function JudgeResultView({ judge, previousMatchRate, className = '' }: Ju
 
       <PointsList title="Good Points" points={judge.goodPoints} tone="good" />
       <PointsList title="Development Points" points={judge.devPoints} tone="dev" />
+
+      <PreviousIssuesSection outcomes={judge.previousIssueOutcomes} />
     </div>
+  );
+}
+
+const PHENOMENON_LABEL: Record<PhenomenonType, string> = {
+  linking: '連結',
+  flap: 'フラップ（tの軽い音）',
+  elision: '脱落',
+  weak: '弱形',
+  ending: '語尾(-s/-ed)',
+};
+
+/**
+ * 「前回の指摘」欄（DESIGN.md §8 5b）。前回提出にissuesが無い（初回提出など）場合は欄ごと非表示にする。
+ */
+function PreviousIssuesSection({ outcomes }: { outcomes?: PreviousIssueOutcome[] }) {
+  if (!outcomes || outcomes.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
+      <p className="text-sm font-semibold text-neutral-700">前回の指摘</p>
+      <ul className="flex flex-col gap-1.5 text-xs text-neutral-700">
+        {outcomes.map((outcome, i) => (
+          <li key={i} className="flex gap-1.5">
+            <span className={outcome.improved ? 'text-green-600' : 'text-amber-600'}>
+              {outcome.improved ? '✅ 改善' : '△ もう一歩'}
+            </span>
+            <span>
+              「{outcome.words.join(' ')}」の{PHENOMENON_LABEL[outcome.type]}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

@@ -51,8 +51,12 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  /** レベルメーターとお手本再生を一本化する共有AudioContext（DESIGN.md §6 M7）。 */
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  /** お手本<audio>要素をaudioCtxへ接続するノード。destroy時に必ずdisconnectする。 */
+  const referenceSourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -62,9 +66,15 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
   const busyRef = useRef(false);
   /** trueの間はアンマウント済み。await後の副作用開始をここで打ち切る。 */
   const disposedRef = useRef(false);
+  /** trueの間はマイクがOSに停止/ミュートされた後始末中。MediaRecorderのonstopが自動発火しても録音結果を確定させない。 */
+  const abortedRef = useRef(false);
 
   /** お手本の自動再生を停止し、リソースを解放する（音が残るリークを防ぐ）。 */
   const destroyReference = useCallback(() => {
+    // MediaElementSourceに接続した要素の音はcontext.destination経由でのみ出るため、
+    // 破棄時は必ずソースノードもdisconnectする（DESIGN.md §6 M7 注意点）。
+    referenceSourceNodeRef.current?.disconnect();
+    referenceSourceNodeRef.current = null;
     referencePlayerRef.current?.destroy();
     referencePlayerRef.current = null;
   }, []);
@@ -94,13 +104,19 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    // track.stop()はendedイベントを発火させない仕様なので、ここでの正常停止が
+    // handleTrackAbort（OSによる強制終了検知）を誤って再発火させることはない。
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    // ノードは閉じる前にdisconnectしておく（クローズ後でも害はないが後始末を明示する）。
+    micSourceRef.current?.disconnect();
+    micSourceRef.current = null;
+    analyserRef.current?.disconnect();
+    analyserRef.current = null;
     if (audioCtxRef.current) {
       void audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
-    analyserRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -131,53 +147,110 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     rafRef.current = requestAnimationFrame(tick);
   }, []);
 
+  /**
+   * iOSオーディオセッション対策（DESIGN.md §6 M7）: マイクトラックがOSに停止/ミュートされたら、
+   * UIを固まらせず録音を後始末してユーザーに再試行を促す。
+   * ended/mute は同一トラックで連続発火しうるため、一度後始末したら二重実行しない。
+   */
+  const handleTrackAbort = useCallback(() => {
+    if (abortedRef.current) return;
+    abortedRef.current = true;
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        // 既に停止済み等は無視する
+      }
+    }
+    cleanupStream();
+    destroyReference();
+    setIsRecording(false);
+    setError('マイクがOSに停止されました。もう一度録音開始を押してください');
+  }, [cleanupStream, destroyReference]);
+
+  /**
+   * iOSオーディオセッション対策（DESIGN.md §6 M7）: getUserMedia解決直後にHTMLAudioElementの
+   * 再生を始めるとiOSがオーディオセッションを再構成し、マイクトラックを終了させる現象があるため、
+   * 処理順を「getUserMedia解決 → AudioContext生成/resume → アナライザ配線 → MediaRecorder.start()
+   * → お手本をAudioContext経由で先頭から再生」に固定する。お手本の再生もレベルメーターと同じ
+   * AudioContext（MediaElementAudioSourceNode→destination）に一本化し、別個のオーディオセッションを
+   * 発生させないようにする。
+   */
   const start = useCallback(async () => {
     if (busyRef.current || isRecording) return;
     busyRef.current = true;
     setError(null);
     setRecordedBlob(null);
     chunksRef.current = [];
+    abortedRef.current = false;
     setReferenceFinished(false);
     setReferenceCurrentTime(0);
     setReferenceDuration(0);
 
-    // 「録音開始」と同時にお手本を先頭から自動再生する。ユーザー操作の文脈を保つため
-    // マイク許可の await より前（クリックハンドラに近い位置）で再生を開始する。
-    if (referenceSrc) {
-      const referencePlayer = new AudioPlayer({
-        src: referenceSrc,
-        onTimeUpdate: (t, d) => {
-          setReferenceCurrentTime(t);
-          setReferenceDuration(d);
-        },
-        onEnded: () => setReferenceFinished(true),
-      });
-      referencePlayer.setLoopEnabled(false);
-      referencePlayer.setPlaybackRate(rateRef.current);
-      referencePlayerRef.current = referencePlayer;
-      referencePlayer.play().catch(() => {
-        // 自動再生がブロックされても録音自体は継続する
-      });
-    }
-
     try {
+      // 1. getUserMedia解決
       const stream = await navigator.mediaDevices.getUserMedia({
         // エコーキャンセル等を明示指定し、イヤホン無しでもスピーカー→マイクの回り込み（お手本の声）を
         // OS側で除去する（DESIGN.md §6）。録音されるのをユーザーの声だけに近づけ、添削の誤判定を防ぐ。
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       if (disposedRef.current) {
-        // getUserMedia待ち中にアンマウントされた。取得済みストリームとお手本を即座に解放して中断する。
+        // getUserMedia待ち中にアンマウントされた。取得済みストリームを即座に解放して中断する。
         stream.getTracks().forEach((track) => track.stop());
-        destroyReference();
+        return;
+      }
+      if (abortedRef.current) {
+        // この時点ではtrackのended/muteリスナー未登録のため理論上到達しないが、念のため中断する。
+        stream.getTracks().forEach((track) => track.stop());
         return;
       }
       streamRef.current = stream;
 
-      // iOS対策（DESIGN.md §6 M6）: マイク許可ダイアログでiOSが一時停止した再生は自動で戻らないため、
-      // getUserMedia解決後・disposedチェック通過後に必ず先頭へ巻き戻して再度play()する。
-      // クリックハンドラ内（ジェスチャ文脈）の初回play()でアンロック済みなので、この再playも許可される。
-      playReferenceFromStart();
+      // マイクがOSに停止/ミュートされたら後始末してユーザーに再試行を促す（DESIGN.md §6 M7）。
+      stream.getAudioTracks().forEach((track) => {
+        track.addEventListener('ended', handleTrackAbort, { once: true });
+        track.addEventListener('mute', handleTrackAbort, { once: true });
+      });
+
+      // 2. AudioContext生成/resume（iOSはsuspendedで始まることがあるため必ずresumeする）
+      const w = window as WindowWithWebkitAudioContext;
+      const AudioContextCtor = window.AudioContext ?? w.webkitAudioContext;
+      if (AudioContextCtor) {
+        const audioCtx = new AudioContextCtor();
+        audioCtxRef.current = audioCtx;
+        try {
+          await audioCtx.resume();
+        } catch {
+          // resume失敗は致命的にしない（レベルメーターが動かない程度に留める）
+        }
+        if (disposedRef.current) {
+          // アンマウント済み。effectのクリーンアップ(cleanupStream)が既にaudioCtxRef.current
+          // (=audioCtx)をclose済みの可能性が高いため、参照が一致するときだけ後始末し、
+          // 万一の二重close（InvalidStateErrorの未処理rejection）はcatchで握りつぶす。
+          stream.getTracks().forEach((track) => track.stop());
+          if (audioCtxRef.current === audioCtx) {
+            audioCtxRef.current = null;
+            void audioCtx.close().catch(() => {});
+          }
+          return;
+        }
+        if (abortedRef.current) {
+          // resume()待ち中にhandleTrackAbortが発火し、cleanupStream・destroyReference・
+          // setError・setIsRecording(false)まで後始末済み。ここでアナライザ配線・
+          // MediaRecorder構築・お手本再生・setIsRecording(true)を行うと状態が矛盾するため、
+          // 何もせずreturnする（再録音はabortedRefがstart()冒頭でリセットされるため可能）。
+          return;
+        }
+
+        // 3. アナライザ配線（レベルメーター）
+        const micSource = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        micSource.connect(analyser);
+        micSourceRef.current = micSource;
+        analyserRef.current = analyser;
+        monitorLevel();
+      }
 
       const selectedMimeType = pickRecorderMimeType();
       setMimeType(selectedMimeType);
@@ -190,22 +263,11 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
+        // マイクのOS強制終了で後始末済みの場合、中途半端なBlobで結果画面へ遷移させない。
+        if (abortedRef.current) return;
         const finalType = selectedMimeType ?? recorder.mimeType ?? 'audio/webm';
         setRecordedBlob(new Blob(chunksRef.current, { type: finalType }));
       };
-
-      const w = window as WindowWithWebkitAudioContext;
-      const AudioContextCtor = window.AudioContext ?? w.webkitAudioContext;
-      if (AudioContextCtor) {
-        const audioCtx = new AudioContextCtor();
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        source.connect(analyser);
-        audioCtxRef.current = audioCtx;
-        analyserRef.current = analyser;
-        monitorLevel();
-      }
 
       startTimeRef.current = Date.now();
       setElapsedSec(0);
@@ -213,8 +275,34 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
         setElapsedSec(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 200);
 
+      // 4. MediaRecorder.start()
       recorder.start();
       setIsRecording(true);
+
+      // 5. お手本をAudioContext経由で先頭から再生
+      if (referenceSrc) {
+        const referencePlayer = new AudioPlayer({
+          src: referenceSrc,
+          onTimeUpdate: (t, d) => {
+            setReferenceCurrentTime(t);
+            setReferenceDuration(d);
+          },
+          onEnded: () => setReferenceFinished(true),
+        });
+        referencePlayer.setLoopEnabled(false);
+        referencePlayer.setPlaybackRate(rateRef.current);
+        referencePlayerRef.current = referencePlayer;
+
+        const audioCtx = audioCtxRef.current;
+        if (audioCtx) {
+          // createMediaElementSourceは同一<audio>要素につき1回しか呼べないが、start()のたびに
+          // 新しいAudioPlayer（＝新しい<audio>要素）を生成しているため問題ない。
+          const referenceSource = audioCtx.createMediaElementSource(referencePlayer.audio);
+          referenceSource.connect(audioCtx.destination);
+          referenceSourceNodeRef.current = referenceSource;
+        }
+        playReferenceFromStart();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'マイクの使用許可が必要です');
       cleanupStream();
@@ -224,7 +312,7 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     } finally {
       busyRef.current = false;
     }
-  }, [cleanupStream, monitorLevel, referenceSrc, isRecording, destroyReference, playReferenceFromStart]);
+  }, [cleanupStream, monitorLevel, referenceSrc, isRecording, destroyReference, playReferenceFromStart, handleTrackAbort]);
 
   const stop = useCallback(() => {
     recorderRef.current?.stop();
