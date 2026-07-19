@@ -12,10 +12,16 @@ export interface MatchRateChartProps {
 
 const WIDTH = 300;
 const HEIGHT = 96;
-const PADDING = 10;
+const PADDING_TOP = 10;
+const PADDING_BOTTOM = 10;
+const PADDING_RIGHT = 10;
+/** 左側は0/25/50/75/100のY軸ラベルが切れないよう他辺より広めに確保する。 */
+const PADDING_LEFT = 24;
 /** マンネリ防止の早期提案しきい値（DESIGN.md §4）。参考ラインとして表示する。 */
 const SUGGEST_THRESHOLD = 0.85;
 const PRON_SCORE_COLOR = '#3b82f6';
+/** Y軸目盛り（%）。 */
+const Y_AXIS_TICKS = [0, 25, 50, 75, 100];
 
 /**
  * matchRate推移の簡易折れ線グラフ（DESIGN.md §10 M3: 依存追加禁止のためSVG手書き）。
@@ -35,14 +41,14 @@ export function MatchRateChart({ points }: MatchRateChartProps) {
     );
   }
 
-  const innerW = WIDTH - PADDING * 2;
-  const innerH = HEIGHT - PADDING * 2;
-  const xAt = (i: number) => PADDING + (i / (points.length - 1)) * innerW;
-  const yAtRatio = (ratio: number) => PADDING + (1 - Math.min(1, Math.max(0, ratio))) * innerH;
+  const innerW = WIDTH - PADDING_LEFT - PADDING_RIGHT;
+  const innerH = HEIGHT - PADDING_TOP - PADDING_BOTTOM;
+  const xAt = (i: number) => PADDING_LEFT + (i / (points.length - 1)) * innerW;
+  const yAtRatio = (ratio: number) => PADDING_TOP + (1 - Math.min(1, Math.max(0, ratio))) * innerH;
 
   const coords = points.map((p, i) => ({ x: xAt(i), y: yAtRatio(p.matchRate) }));
   const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-  const thresholdY = PADDING + (1 - SUGGEST_THRESHOLD) * innerH;
+  const thresholdY = PADDING_TOP + (1 - SUGGEST_THRESHOLD) * innerH;
 
   const pronCoords = points
     .map((p, i) => (typeof p.pronScore === 'number' ? { x: xAt(i), y: yAtRatio(p.pronScore / 100) } : null))
@@ -55,10 +61,28 @@ export function MatchRateChart({ points }: MatchRateChartProps) {
   return (
     <div className="flex flex-col gap-1">
       <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="一致率の推移グラフ">
+        {Y_AXIS_TICKS.map((tick) => {
+          const y = yAtRatio(tick / 100);
+          return (
+            <g key={`y-axis-${tick}`}>
+              <line
+                x1={PADDING_LEFT}
+                y1={y}
+                x2={WIDTH - PADDING_RIGHT}
+                y2={y}
+                stroke="#e5e5e5"
+                strokeWidth={0.5}
+              />
+              <text x={PADDING_LEFT - 3} y={y} textAnchor="end" dominantBaseline="middle" fontSize={7} fill="#a3a3a3">
+                {tick}
+              </text>
+            </g>
+          );
+        })}
         <line
-          x1={PADDING}
+          x1={PADDING_LEFT}
           y1={thresholdY}
-          x2={WIDTH - PADDING}
+          x2={WIDTH - PADDING_RIGHT}
           y2={thresholdY}
           stroke="#fca5a5"
           strokeWidth={1}
