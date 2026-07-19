@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { buildFallbackPrompt, copyTextToClipboard } from '../features/judge/clipboardFallback';
+import { TranslationImportPanel } from '../features/materials/TranslationImportPanel';
 import { runJudge } from '../features/judge/runJudge';
 import { SubmissionResultPanel, type JudgeRunStatus } from '../features/judge/SubmissionResultPanel';
 import { PracticeWizard, type SubmitOutcome } from '../features/practice/PracticeWizard';
@@ -64,16 +65,19 @@ export function PracticePage() {
     };
   }, [materialId]);
 
+  // 依存は音声の実体（audioBlob/audioUrl）だけにする。訳・語彙の取り込みでsentencesだけが
+  // 変わったときにblob URLを作り直すと、練習中のプレーヤーが再マウントされてしまうため。
+  const audioBlob = material?.source === 'local' ? material.audioBlob : undefined;
+  const audioUrl = material?.audioUrl;
   const audioSrc = useMemo(() => {
-    if (!material) return undefined;
-    if (material.source === 'local' && material.audioBlob) {
-      return URL.createObjectURL(material.audioBlob);
+    if (audioBlob) {
+      return URL.createObjectURL(audioBlob);
     }
-    if (material.audioUrl) {
-      return `${import.meta.env.BASE_URL}${material.audioUrl}`;
+    if (audioUrl) {
+      return `${import.meta.env.BASE_URL}${audioUrl}`;
     }
     return undefined;
-  }, [material]);
+  }, [audioBlob, audioUrl]);
 
   useEffect(() => {
     return () => {
@@ -211,6 +215,8 @@ export function PracticePage() {
         onCopyFallback={() => void handleCopyFallback()}
         fallbackCopied={fallbackCopied}
       />
+
+      <TranslationImportPanel material={material} onUpdated={setMaterial} />
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium text-neutral-700">提出履歴</p>

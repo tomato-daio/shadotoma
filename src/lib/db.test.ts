@@ -224,6 +224,28 @@ describe('syncBundledMaterials', () => {
     expect((await getMaterial('voa-1000-p1'))?.title).toBe('更新後タイトル');
   });
 
+  it('既存bundled教材に後付けした訳・語彙は、enが一致する文なら上書き同期後も残る', async () => {
+    await putMaterial(
+      makeBundledMaterial({
+        id: 'voa-1000-p1',
+        sentences: [{ en: 'Hello world.', ja: 'こんにちは世界。', vocab: [{ term: 'world', ja: '世界' }] }],
+      }),
+    );
+
+    // indexは訳・語彙なしの素の文で同じ教材を配信してくる（アプリ起動毎の再同期を想定）
+    const indexData = [makeBundledMaterial({ id: 'voa-1000-p1', sentences: [{ en: 'Hello world.' }] })];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(indexData), { status: 200 })),
+    );
+
+    await syncBundledMaterials('/');
+
+    const synced = await getMaterial('voa-1000-p1');
+    expect(synced?.sentences[0].ja).toBe('こんにちは世界。');
+    expect(synced?.sentences[0].vocab).toEqual([{ term: 'world', ja: '世界' }]);
+  });
+
   it('source:localのローカル取り込み教材はindexに無くても絶対に削除しない', async () => {
     const local: Material = {
       id: newId('local'),

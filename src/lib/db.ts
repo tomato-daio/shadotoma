@@ -1,11 +1,20 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { PhenomenonIssue, PreviousIssueOutcome } from './phenomena';
+import { mergeSentenceAnnotations } from './scriptAnnotations';
 
 export type PracticeStep = 'listening' | 'script' | 'overlapping' | 'shadowing';
+
+/** 重要語彙1件（scriptAnnotations.tsのクリップボード往復取り込みで付与する）。 */
+export interface VocabItem {
+  term: string; // 単語・熟語（スクリプト中の表記のまま）
+  ja: string; // 簡潔な意味
+}
 
 export interface Sentence {
   en: string;
   ja?: string;
+  /** この文の重要語彙（0〜数個）。未付与・旧データはundefined（後方互換）。 */
+  vocab?: VocabItem[];
 }
 
 // store: materials（教材メタ。音声本体は bundled=URL参照 / local=audioBlob保存）
@@ -513,7 +522,13 @@ export async function syncBundledMaterials(baseUrl: string): Promise<void> {
     const tx = db.transaction('materials', 'readwrite');
     const existingBundled = await tx.store.index('by-source').getAllKeys('voa');
     for (const item of validItems) {
-      await tx.store.put(item);
+      // 既存レコードへ後付けした訳・語彙(ja/vocab)を、indexからの丸ごと上書きで消さないよう引き継ぐ
+      // （scriptAnnotations.tsのクリップボード往復取り込みで付与されたデータの保護）。
+      const existing = await tx.store.get(item.id);
+      const merged = existing
+        ? { ...item, sentences: mergeSentenceAnnotations(existing.sentences, item.sentences) }
+        : item;
+      await tx.store.put(merged);
     }
     for (const key of existingBundled) {
       if (!indexIds.has(key as string)) {
