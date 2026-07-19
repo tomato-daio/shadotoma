@@ -37,6 +37,12 @@ export interface PreviousIssueOutcome {
   type: PhenomenonType;
   words: string[];
   improved: boolean;
+  /**
+   * 指摘元の文index（M14で追加）。the/to等の頻出語は複数の文に現れるため、語からの逆引きでは
+   * 位置を誤る。IndexedDBに保存済みの旧データはsiを持たない（optional）ので、表示側
+   * （scriptFeedback.ts）はsi無しのときだけ逆引きにフォールバックする。
+   */
+  si?: number;
 }
 
 // ---- 正規化ヘルパー ----
@@ -239,6 +245,6 @@ export function comparePreviousIssues(
     const improved = issue.words.every((word) =>
       wordMarks.some((mark) => mark.si === issue.si && mark.word === word && mark.status === 'ok'),
     );
-    return { type: issue.type, words: issue.words, improved };
+    return { type: issue.type, words: issue.words, si: issue.si, improved };
   });
 }

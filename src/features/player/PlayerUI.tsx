@@ -54,13 +54,13 @@ export function PlayerUI({
         </button>
       </div>
 
-      {scriptVisible ? (
-        <ScriptView sentences={sentences} previousJudge={previousJudge} />
-      ) : (
+      {/* 非表示時もアンマウントせずCSSで隠す（ScriptView内の「訳・語彙」「前回の添削」トグル状態を保持するため）。 */}
+      <ScriptView sentences={sentences} previousJudge={previousJudge} className={scriptVisible ? '' : 'hidden'} />
+      {!scriptVisible ? (
         <div className="rounded-lg bg-neutral-50 p-3 text-center text-sm text-neutral-400">
           スクリプト非表示中（音だけを頼りに聴いてみましょう）
         </div>
-      )}
+      ) : null}
 
       {/* シークバー */}
       <div className="flex flex-col gap-1">

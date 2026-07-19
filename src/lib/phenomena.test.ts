@@ -265,14 +265,14 @@ describe('comparePreviousIssues', () => {
       mark('light.', 0, 'ok'),
     ];
     const outcomes = comparePreviousIssues(previousIssues, wordMarks);
-    expect(outcomes).toEqual([{ type: 'linking', words: ['turned', 'on'], improved: true }]);
+    expect(outcomes).toEqual([{ type: 'linking', words: ['turned', 'on'], si: 0, improved: true }]);
   });
 
   it('前回指摘の語がまだmissed/subならimproved:falseになる', () => {
     const previousIssues: PhenomenonIssue[] = [{ type: 'weak', words: ['of'], si: 0 }];
     const wordMarks = [mark('A', 0, 'ok'), mark('cup', 0, 'ok'), mark('of', 0, 'missed'), mark('tea.', 0, 'ok')];
     const outcomes = comparePreviousIssues(previousIssues, wordMarks);
-    expect(outcomes).toEqual([{ type: 'weak', words: ['of'], improved: false }]);
+    expect(outcomes).toEqual([{ type: 'weak', words: ['of'], si: 0, improved: false }]);
   });
 
   it('片方の語だけokになっても、ペア全体がokでなければimproved:falseになる', () => {

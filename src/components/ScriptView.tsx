@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { JudgeResult, Sentence } from '../lib/db';
 import { PHENOMENON_LABEL } from '../lib/phenomena';
 import { buildScriptFeedback, hasAnyFeedback, type WordHighlight } from '../lib/scriptFeedback';
@@ -21,8 +21,12 @@ const HIGHLIGHT_CLASS: Record<WordHighlight, string> = {
  * - 各文の英文(en)と、あれば日本語訳(ja)・重要語彙(vocab)を表示する（トグルで隠せる・初期表示）。
  * - previousJudgeがあれば、前回の提出でできなかった語をピンク・改善した語を青緑でハイライトし、
  *   該当文の直下に Development / Good のコメントカードを出す（トグルで隠せる・初期表示）。
+ *
+ * memo化必須: RecorderUIは録音中レベルメーターのためほぼ60fpsで再レンダーされ、PlayerUIも
+ * timeupdate毎に再レンダーされる。ハイライト時は単語単位のspanが数百要素になるため、
+ * props（すべて参照安定）が変わらない限り再レンダーをスキップする。
  */
-export function ScriptView({ sentences, previousJudge, className = '' }: ScriptViewProps) {
+function ScriptViewImpl({ sentences, previousJudge, className = '' }: ScriptViewProps) {
   const hasAnnotations = sentences.some((s) => s.ja || (s.vocab && s.vocab.length > 0));
   const [showJa, setShowJa] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
@@ -88,6 +92,8 @@ export function ScriptView({ sentences, previousJudge, className = '' }: ScriptV
     </div>
   );
 }
+
+export const ScriptView = memo(ScriptViewImpl);
 
 function ToggleChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (

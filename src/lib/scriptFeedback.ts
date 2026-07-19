@@ -1,13 +1,14 @@
 /**
  * 練習画面のスクリプトに「前回の提出でできた/できなかった箇所」を重ねるためのデータ構築（純関数）。
  *
- * - できなかった語（wordMarksのmissed/sub、および指摘issuesの対象語）→ ピンクハイライト
- * - 前回指摘から改善した語（previousIssueOutcomesのimproved=true）→ 青緑ハイライト
+ * - できなかった語（wordMarksのmissed/sub、および指摘issuesの対象箇所）→ ピンクハイライト
+ * - 前回指摘から改善した箇所（previousIssueOutcomesのimproved=true）→ 青緑ハイライト
  * - 文の直下に Development（今回の指摘）/ Good（改善した指摘）のコメントカード
  *
  * wordMarksはスクリプト単語と配列順1:1（align.tsのbuildScriptWordsと同じ空白分割）という
- * 不変条件に依存する。教材の差し替え等で語数が合わない場合はハイライトを諦めて
- * プレーン表示にフォールバックする（phenomena.tsのpositionsReliableと同じ安全側の判定）。
+ * 不変条件に依存する。教材の差し替え等で語数が合わない場合はハイライトを諦めてプレーン表示に
+ * フォールバックし、カードも「対象語が現行スクリプトのその文に実在する」ものだけ表示する
+ * （phenomena.tsのpositionsReliableと同じ安全側の判定）。
  */
 
 import type { JudgeResult, Sentence, WordMark } from './db';
@@ -41,8 +42,8 @@ export function hasAnyFeedback(feedback: SentenceFeedback[]): boolean {
 
 /**
  * outcome.wordsが全て同一文内にstatus==='ok'で存在する最初の文indexを返す。
- * PreviousIssueOutcomeはsiを持たないため、comparePreviousIssuesのimproved判定と同じ条件で
- * 逆引きする（同名語が複数文にある場合は最初の文に付く既知の限界を許容）。
+ * si付きのoutcome（M14以降の保存データ）には不要で、siを持たない旧データ専用のフォールバック。
+ * the/to等の頻出語では手前の文に誤ヒットしうる既知の限界がある（siがあれば正確）。
  */
 function findOutcomeSentence(outcome: PreviousIssueOutcome, wordMarks: WordMark[]): number | null {
   const sentenceIndices = [...new Set(wordMarks.map((m) => m.si))].sort((a, b) => a - b);
@@ -53,6 +54,29 @@ function findOutcomeSentence(outcome: PreviousIssueOutcome, wordMarks: WordMark[
     }
   }
   return null;
+}
+
+/**
+ * 文si内のmark列から、語列wordsに（隣接して）一致しacceptを満たす位置を`${si}:${k}`形式でtargetへ登録する。
+ * 語テキストだけをキーにすると同一文内の同名トークン（頻出語のthe等）まで巻き添えで塗ってしまうため、
+ * 位置ベースで照合する。
+ */
+function addMatchPositions(
+  target: Set<string>,
+  marks: WordMark[] | undefined,
+  si: number,
+  words: string[],
+  accept: (slice: WordMark[]) => boolean,
+): void {
+  if (!marks || words.length === 0) return;
+  for (let k = 0; k + words.length <= marks.length; k++) {
+    const slice = marks.slice(k, k + words.length);
+    if (!slice.every((m, j) => m.word === words[j])) continue;
+    if (!accept(slice)) continue;
+    for (let j = 0; j < words.length; j++) {
+      target.add(`${si}:${k + j}`);
+    }
+  }
 }
 
 /** 直近の判定結果から、文ごとのハイライト・カード情報を組み立てる。judge未指定（初回練習）は空を返す。 */
@@ -77,32 +101,39 @@ export function buildScriptFeedback(sentences: Sentence[], judge?: JudgeResult):
     }
   }
 
-  // 今回の指摘（Developmentカード + 対象語のピンクハイライト）
+  // 対象語が現行スクリプトの文siに実在するか。教材の再分割（DESIGN.md §7b）で旧提出のsiが
+  // 別の文を指すようになったカードを、無関係な文の下に出さないためのゲート。
+  const wordsExistIn = (si: number, words: string[]): boolean =>
+    si >= 0 && si < sentences.length && words.every((w) => scriptWords[si].includes(w));
+
+  const missPositions = new Set<string>();
+  const improvedPositions = new Set<string>();
+
+  // 今回の指摘（Developmentカード + 対象箇所のピンク。ペアはok側のメンバーも含めて塗る）
   const issuesBySentence = new Map<number, PhenomenonIssue[]>();
-  const issueWordKeys = new Set<string>();
   for (const issue of judge.issues ?? []) {
-    if (issue.si < 0 || issue.si >= sentences.length) continue;
+    if (!wordsExistIn(issue.si, issue.words)) continue;
     const list = issuesBySentence.get(issue.si) ?? [];
     list.push(issue);
     issuesBySentence.set(issue.si, list);
-    for (const word of issue.words) {
-      issueWordKeys.add(`${issue.si}:${word}`);
-    }
+    addMatchPositions(missPositions, marksBySentence.get(issue.si), issue.si, issue.words, (slice) =>
+      slice.some((m) => m.status !== 'ok'),
+    );
   }
 
-  // 改善した前回指摘（Goodカード + 対象語の青緑ハイライト）。siは逆引きし、失敗分はスキップする。
+  // 改善した前回指摘（Goodカード + 対象箇所の青緑）。si付き（M14以降）はそれを使い、
+  // si無しの旧データのみ逆引きにフォールバック。逆引き失敗・語が実在しない場合はスキップ。
   const improvedBySentence = new Map<number, PreviousIssueOutcome[]>();
-  const improvedWordKeys = new Set<string>();
   for (const outcome of judge.previousIssueOutcomes ?? []) {
     if (!outcome.improved) continue;
-    const si = findOutcomeSentence(outcome, wordMarks);
-    if (si === null || si >= sentences.length) continue;
+    const si = outcome.si ?? findOutcomeSentence(outcome, wordMarks);
+    if (si === null || !wordsExistIn(si, outcome.words)) continue;
     const list = improvedBySentence.get(si) ?? [];
     list.push(outcome);
     improvedBySentence.set(si, list);
-    for (const word of outcome.words) {
-      improvedWordKeys.add(`${si}:${word}`);
-    }
+    addMatchPositions(improvedPositions, marksBySentence.get(si), si, outcome.words, (slice) =>
+      slice.every((m) => m.status === 'ok'),
+    );
   }
 
   return sentences.map((_s, si) => {
@@ -110,11 +141,9 @@ export function buildScriptFeedback(sentences: Sentence[], judge?: JudgeResult):
     let words: FeedbackWord[] | null = null;
     if (marks !== null && marks.length === scriptWords[si].length) {
       words = scriptWords[si].map((text, k) => {
-        const mark = marks[k];
-        const key = `${si}:${mark.word}`;
-        // ピンク優先: できていない語は改善ハイライトより「今できていない」ことを優先して見せる
-        if (mark.status !== 'ok' || issueWordKeys.has(key)) return { text, highlight: 'miss' as const };
-        if (improvedWordKeys.has(key)) return { text, highlight: 'improved' as const };
+        // ピンク優先: できていない箇所は改善ハイライトより「今できていない」ことを優先して見せる
+        if (marks[k].status !== 'ok' || missPositions.has(`${si}:${k}`)) return { text, highlight: 'miss' as const };
+        if (improvedPositions.has(`${si}:${k}`)) return { text, highlight: 'improved' as const };
         return { text, highlight: null };
       });
     }

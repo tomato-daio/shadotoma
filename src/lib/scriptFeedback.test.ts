@@ -128,6 +128,60 @@ describe('buildScriptFeedback', () => {
     expect(feedback[0].words![3]).toEqual({ text: 'the', highlight: 'miss' });
   });
 
+  it('si付きのoutcome（M14以降）は、同名語が手前の文にokで存在しても指定の文にGoodカードが付く', () => {
+    const sentences: Sentence[] = [{ en: 'I like the dog.' }, { en: 'She fed the cat.' }];
+    const marks: WordMark[] = [
+      mark('I', 0, 'ok'),
+      mark('like', 0, 'ok'),
+      mark('the', 0, 'ok'),
+      mark('dog.', 0, 'ok'),
+      mark('She', 1, 'ok'),
+      mark('fed', 1, 'ok'),
+      mark('the', 1, 'ok'),
+      mark('cat.', 1, 'ok'),
+    ];
+    const judge = makeJudge({
+      wordMarks: marks,
+      // 前回文1の'the'の弱形指摘が改善した。文0にも'the'(ok)があるが、siがあるので誤配置しない
+      previousIssueOutcomes: [{ type: 'weak', words: ['the'], si: 1, improved: true }],
+    });
+    const feedback = buildScriptFeedback(sentences, judge);
+    expect(feedback[0].improvedOutcomes).toHaveLength(0);
+    expect(feedback[1].improvedOutcomes).toHaveLength(1);
+    expect(feedback[0].words![2]).toEqual({ text: 'the', highlight: null });
+    expect(feedback[1].words![2]).toEqual({ text: 'the', highlight: 'improved' });
+  });
+
+  it('同一文内の同名トークンは、指摘に該当する位置だけをピンクにする（okの同名語は巻き添えにしない）', () => {
+    const sentences: Sentence[] = [{ en: 'I saw the dog and the cat.' }];
+    const marks: WordMark[] = [
+      mark('I', 0, 'ok'),
+      mark('saw', 0, 'ok'),
+      mark('the', 0, 'missed'),
+      mark('dog', 0, 'ok'),
+      mark('and', 0, 'ok'),
+      mark('the', 0, 'ok'),
+      mark('cat.', 0, 'ok'),
+    ];
+    const judge = makeJudge({
+      wordMarks: marks,
+      issues: [{ type: 'weak', words: ['the'], si: 0 }],
+    });
+    const feedback = buildScriptFeedback(sentences, judge);
+    expect(feedback[0].words![2]).toEqual({ text: 'the', highlight: 'miss' });
+    expect(feedback[0].words![5]).toEqual({ text: 'the', highlight: null });
+  });
+
+  it('教材の再分割等でsiの文に対象語が実在しない旧issueのカードは表示しない', () => {
+    const judge = makeJudge({
+      wordMarks: matchingMarks(),
+      // si=1は範囲内だが、文1に'turned'/'on'は存在しない（再分割前のsiを引きずった旧データを想定）
+      issues: [{ type: 'linking', words: ['turned', 'on'], si: 1 }],
+    });
+    const feedback = buildScriptFeedback(SENTENCES, judge);
+    expect(feedback.every((f) => f.devIssues.length === 0)).toBe(true);
+  });
+
   it('語数不一致でもsiが範囲内のissuesカードは表示対象として残す', () => {
     const judge = makeJudge({
       wordMarks: matchingMarks().slice(0, 3),

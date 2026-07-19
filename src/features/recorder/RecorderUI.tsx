@@ -84,7 +84,8 @@ export function RecorderUI({ referenceSrc, sentences, onSubmit, previousJudge, c
         >
           スクリプト{scriptVisible ? 'を隠す' : 'を表示'}
         </button>
-        {scriptVisible ? <ScriptView sentences={sentences} previousJudge={previousJudge} /> : null}
+        {/* 非表示時もアンマウントせずCSSで隠す（ScriptView内の表示トグル状態を保持するため）。 */}
+        <ScriptView sentences={sentences} previousJudge={previousJudge} className={scriptVisible ? '' : 'hidden'} />
       </div>
 
       {!recorder.recordedBlob ? (
