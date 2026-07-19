@@ -22,6 +22,8 @@ export interface UseRecorderResult {
   stop: () => void;
   reset: () => void;
   setRate: (rate: number) => void;
+  /** お手本を先頭へ巻き戻して再度再生する（iOS対策の手動ボタン・流し直し兼用）。 */
+  replayReference: () => void;
 }
 
 interface WindowWithWebkitAudioContext extends Window {
@@ -65,6 +67,22 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
   const destroyReference = useCallback(() => {
     referencePlayerRef.current?.destroy();
     referencePlayerRef.current = null;
+  }, []);
+
+  /**
+   * お手本を先頭(0秒)へ巻き戻して再度play()する。
+   * iOS対策（DESIGN.md §6 M6）: ジェスチャ文脈内の初回play()でアンロック済みの要素は、
+   * ジェスチャ外からの再play()もiOS Safariで許可される。getUserMedia解決直後の自動呼び出しと、
+   * 「▶ お手本を最初から流す」ボタンからの手動呼び出しの両方で使う。再生失敗はエラーにしない。
+   */
+  const playReferenceFromStart = useCallback(() => {
+    const player = referencePlayerRef.current;
+    if (!player) return;
+    player.seek(0);
+    setReferenceFinished(false);
+    player.play().catch(() => {
+      // 再playに失敗しても録音は継続する（手動の「最初から流す」ボタンで再試行できる）
+    });
   }, []);
 
   const cleanupStream = useCallback(() => {
@@ -143,7 +161,11 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        // エコーキャンセル等を明示指定し、イヤホン無しでもスピーカー→マイクの回り込み（お手本の声）を
+        // OS側で除去する（DESIGN.md §6）。録音されるのをユーザーの声だけに近づけ、添削の誤判定を防ぐ。
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       if (disposedRef.current) {
         // getUserMedia待ち中にアンマウントされた。取得済みストリームとお手本を即座に解放して中断する。
         stream.getTracks().forEach((track) => track.stop());
@@ -151,6 +173,11 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
         return;
       }
       streamRef.current = stream;
+
+      // iOS対策（DESIGN.md §6 M6）: マイク許可ダイアログでiOSが一時停止した再生は自動で戻らないため、
+      // getUserMedia解決後・disposedチェック通過後に必ず先頭へ巻き戻して再度play()する。
+      // クリックハンドラ内（ジェスチャ文脈）の初回play()でアンロック済みなので、この再playも許可される。
+      playReferenceFromStart();
 
       const selectedMimeType = pickRecorderMimeType();
       setMimeType(selectedMimeType);
@@ -197,7 +224,7 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     } finally {
       busyRef.current = false;
     }
-  }, [cleanupStream, monitorLevel, referenceSrc, isRecording, destroyReference]);
+  }, [cleanupStream, monitorLevel, referenceSrc, isRecording, destroyReference, playReferenceFromStart]);
 
   const stop = useCallback(() => {
     recorderRef.current?.stop();
@@ -238,5 +265,6 @@ export function useRecorder(referenceSrc: string): UseRecorderResult {
     stop,
     reset,
     setRate,
+    replayReference: playReferenceFromStart,
   };
 }

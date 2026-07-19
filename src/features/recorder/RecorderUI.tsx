@@ -1,22 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatTime } from '../../lib/audio';
+import type { Sentence } from '../../lib/db';
 import { RATE_PRESETS } from '../player/AudioPlayer';
 import { useRecorder } from './useRecorder';
 
 export interface RecorderUIProps {
   /** お手本音声URL。録音開始と同時に自動再生し、録音後の聴き比べにも使う。 */
   referenceSrc: string;
+  /** このセクションのスクリプト（録音中のスクリプト表示切替用・DESIGN.md §6 M6）。 */
+  sentences: Sentence[];
   onSubmit: (blob: Blob, mimeType: string) => Promise<void> | void;
   className?: string;
 }
 
 type CompareTarget = 'own' | 'reference';
 
-export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderUIProps) {
+export function RecorderUI({ referenceSrc, sentences, onSubmit, className = '' }: RecorderUIProps) {
   const recorder = useRecorder(referenceSrc);
   const [compareTarget, setCompareTarget] = useState<CompareTarget>('own');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // 録音中のスクリプト表示（DESIGN.md §6 M6）: シャドーイングの建前を守るため初期値は非表示。
+  const [scriptVisible, setScriptVisible] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // recordedBlobが変わったときだけ生成する（毎レンダーで生成するとrevokeされずリークする）。
@@ -66,6 +71,31 @@ export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderU
       {recorder.error ? (
         <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{recorder.error}</div>
       ) : null}
+
+      {/* 録音中のスクリプト表示切替（DESIGN.md §6 M6）。録音前・録音中・録音後いつでも切替可能。 */}
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setScriptVisible((v) => !v)}
+          className="self-start rounded-full border border-tomato-300 px-3 py-1 text-xs font-medium text-tomato-600 active:bg-tomato-50"
+        >
+          スクリプト{scriptVisible ? 'を隠す' : 'を表示'}
+        </button>
+        {scriptVisible ? (
+          <div className="max-h-40 overflow-y-auto rounded-lg bg-neutral-50 p-3 text-sm leading-relaxed">
+            {sentences.length === 0 ? (
+              <p className="text-neutral-400">スクリプトがありません</p>
+            ) : (
+              sentences.map((s, i) => (
+                <p key={i} className="mb-1">
+                  <span className="text-neutral-800">{s.en}</span>
+                  {s.ja ? <span className="ml-2 block text-xs text-neutral-500">{s.ja}</span> : null}
+                </p>
+              ))
+            )}
+          </div>
+        ) : null}
+      </div>
 
       {!recorder.recordedBlob ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-neutral-200 p-4">
@@ -124,6 +154,15 @@ export function RecorderUI({ referenceSrc, onSubmit, className = '' }: RecorderU
                   お手本が終わりました。話し終えたら停止を押してください。
                 </p>
               ) : null}
+              {/* iOS対策（DESIGN.md §6 M6）: 自動再生がブロックされた場合に備え、録音中は常に
+                  直接タップで確実に再生できるボタンを表示する。流し直しにも使える。 */}
+              <button
+                type="button"
+                onClick={recorder.replayReference}
+                className="mt-1 self-start rounded-md border border-neutral-300 px-3 py-1.5 text-xs text-neutral-600 active:bg-neutral-100"
+              >
+                ▶ お手本を最初から流す
+              </button>
             </div>
           ) : null}
 

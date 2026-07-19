@@ -116,7 +116,7 @@ export function PracticeWizard({ material, audioSrc, onSubmit, onGoToMaterials }
           onLoopCountChange={setLoopCount}
         />
       ) : (
-        <RecorderUI referenceSrc={audioSrc} onSubmit={handleSubmit} />
+        <RecorderUI referenceSrc={audioSrc} sentences={material.sentences} onSubmit={handleSubmit} />
       )}
 
       <div className="flex gap-2">
