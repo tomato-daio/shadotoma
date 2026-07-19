@@ -61,7 +61,12 @@ export interface AzurePronunciationResult {
   pronScore: number; // 総合 0-100
   accuracyScore: number; // 正確さ 0-100
   fluencyScore: number; // 流暢さ 0-100
-  prosodyScore: number; // 韻律 0-100
+  /**
+   * 韻律 0-100。リージョンにより韻律採点が未対応の場合があり（DESIGN.md §8c M10）、
+   * 韻律ありでの実行が失敗し韻律なしで自動リトライして成功した場合はundefined
+   * （既存データ・韻律対応リージョンでは常に数値が入るため後方互換）。
+   */
+  prosodyScore?: number;
   completenessScore: number; // 完全性 0-100
   words: AzureWordScore[];
 }

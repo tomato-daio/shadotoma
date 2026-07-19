@@ -8,7 +8,14 @@
  * 静的importするとAzureキー未設定のユーザーが開く判定結果画面のバンドルにも常に含まれて
  * しまうため、実際にキーが設定され採点が実行されるときだけ読み込む（バンドル分割）。
  * このファイルの純関数群（toPhraseAssessment/aggregatePhraseAssessments/worstWords/
- * describeAzureError）はSDKに依存しないため、SDK無しでVitestテストできる。
+ * describeAzureError/truncateDetail）はSDKに依存しないため、SDK無しでVitestテストできる。
+ *
+ * プロソディ・フォールバック（DESIGN.md §8c M10）: 韻律（プロソディ）採点はリージョンにより
+ * 未対応の場合があり（東日本で失敗報告あり）、その場合は韻律有効でのcontinuous recognitionが
+ * cancellation/エラー/結果ゼロのいずれかで失敗する。runAzurePronunciationAssessmentは、
+ * 韻律有効での実行が失敗した場合に韻律なし設定で1回だけ自動リトライし、成功したら
+ * prosodyScoreをundefinedにして返す（型・表示の後方互換のためAzurePronunciationResult.
+ * prosodyScoreはoptional）。両方失敗した場合のみ例外を投げる。
  */
 
 import type { AzurePronunciationResult, AzureWordScore } from '../../lib/db';
@@ -130,9 +137,24 @@ export class AzurePronunciationAuthError extends Error {
 
 export class AzurePronunciationNetworkError extends Error {
   constructor(detail?: string) {
-    super(`Azure Speechへの接続に失敗しました${detail ? `（${detail}）` : ''}。`);
+    super(`Azure Speechへの接続に失敗しました${detail ? `（${truncateDetail(detail)}）` : ''}。`);
     this.name = 'AzurePronunciationNetworkError';
   }
+}
+
+/** 汎用エラーメッセージに含めるSDK詳細情報の最大文字数（DESIGN.md §8c M10:「先頭120字程度」）。 */
+const ERROR_DETAIL_MAX_LENGTH = 120;
+
+/**
+ * 詳細文字列を指定長で切り詰める純関数（DESIGN.md §8c M10）。
+ * SDKのcancellation errorDetailsは長い場合があり、そのままだと判定結果画面の
+ * 「エラー時は1行メッセージ」を壊すため、azureErrorへ含める前に切り詰める。
+ * 切り詰めた場合は末尾に…を付ける。console.errorへは（呼び出し側で）切り詰めない全文を渡すこと。
+ */
+export function truncateDetail(detail: string, maxLength: number = ERROR_DETAIL_MAX_LENGTH): string {
+  const trimmed = detail.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength)}…`;
 }
 
 /** 判定結果画面に出す一行メッセージへ変換する純関数（DESIGN.md §8c: 「エラー時は1行メッセージ」）。 */
@@ -146,34 +168,37 @@ export function describeAzureError(err: unknown): string {
     return err.message;
   }
   const raw = err instanceof Error ? err.message : String(err);
-  return `発音スコアの取得に失敗しました（${raw}）。`;
+  return `発音スコアの取得に失敗しました: ${truncateDetail(raw)}`;
 }
 
 /** continuous recognitionの終了待ちタイムアウト（60秒超音声も考慮した余裕のある値）。 */
 const RECOGNITION_TIMEOUT_MS = 120_000;
 
+/** このファイル内でのみ使う、動的importしたSDKモジュール名前空間の型。 */
+type AzureSpeechSDK = typeof import('microsoft-cognitiveservices-speech-sdk');
+
 /**
- * Azure Speechで発音評価を実行する（DESIGN.md §8c）。
+ * 1回ぶんのcontinuous recognitionを実行し、フレーズ結果配列を返す内部ヘルパー。
+ * プロソディ・フォールバック（DESIGN.md §8c M10）のため、runAzurePronunciationAssessmentから
+ * enableProsodyを切り替えて最大2回（韻律あり→失敗時のみ韻律なしで1回）呼ばれる。
  *
  * 手順:
- * 1. pcmをWAV(16kHz mono PCM16)へエンコードし、push streamへ書き込む
+ * 1. wavBuffer（16kHz mono PCM16）をpush streamへ書き込む
  * 2. PronunciationAssessmentConfig（referenceText/HundredMark/Phoneme/enableMiscue/
  *    enableProsodyAssessment）を適用したSpeechRecognizerでcontinuous recognitionを実行し、
  *    60秒超の音声でも最後まで処理する
- * 3. 各フレーズの結果を音声長加重で統合し、AzurePronunciationResultを返す
  *
- * 失敗時は AzurePronunciation*Error を投げる（呼び出し側は describeAzureError で一行メッセージ化する）。
+ * cancellation/エラー/タイムアウト時は AzurePronunciation*Error（またはSDK詳細を含むError）を
+ * 投げる。結果0件（無音等）でも例外は投げず空配列を返す（呼び出し側が「結果ゼロ」として扱う）。
  */
-export async function runAzurePronunciationAssessment(
-  params: RunAzurePronunciationAssessmentParams,
-): Promise<AzurePronunciationResult> {
-  const { pcm, referenceText, apiKey, region } = params;
-
-  // SDK本体は実際に採点を実行するときだけ読み込む（バンドル分割。ファイル冒頭コメント参照）。
-  const SpeechSDK = await import('microsoft-cognitiveservices-speech-sdk');
-
-  const wavBuffer = encodeWavPcm16(pcm, { sampleRate: 16000 });
-
+async function recognizeOnce(
+  SpeechSDK: AzureSpeechSDK,
+  wavBuffer: ArrayBuffer,
+  referenceText: string,
+  apiKey: string,
+  region: string,
+  enableProsody: boolean,
+): Promise<PhraseAssessment[]> {
   const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(apiKey, region);
   speechConfig.speechRecognitionLanguage = 'en-US';
 
@@ -190,7 +215,7 @@ export async function runAzurePronunciationAssessment(
     SpeechSDK.PronunciationAssessmentGranularity.Phoneme,
     true, // enableMiscue
   );
-  pronunciationConfig.enableProsodyAssessment = true;
+  pronunciationConfig.enableProsodyAssessment = enableProsody;
   pronunciationConfig.applyTo(recognizer);
 
   const phrases: PhraseAssessment[] = [];
@@ -238,6 +263,9 @@ export async function runAzurePronunciationAssessment(
           ) {
             reject(new AzurePronunciationNetworkError(e.errorDetails));
           } else {
+            // 韻律採点未対応リージョン等での失敗は多くの場合ここに来る（BadRequest等）。
+            // e.errorDetailsをそのままError.messageに持たせ、呼び出し側のdescribeAzureErrorで
+            // 判定結果画面向けに切り詰める（console.errorには全文を出す。DESIGN.md §8c M10）。
             reject(new Error(e.errorDetails || 'Azure Speechでキャンセルされました。'));
           }
         });
@@ -265,9 +293,72 @@ export async function runAzurePronunciationAssessment(
     speechConfig.close();
   }
 
+  return phrases;
+}
+
+/**
+ * Azure Speechで発音評価を実行する（DESIGN.md §8c、プロソディ・フォールバックはM10）。
+ *
+ * 1. まず韻律（プロソディ）ありで実行する
+ * 2. cancellation/エラー/結果ゼロのいずれかで失敗したら、韻律なし設定で1回だけ自動リトライする
+ *    （東日本リージョン等での韻律未対応が疑われるケースを、採点そのものは諦めずに救済する）
+ * 3. リトライも失敗したら例外を投げる（呼び出し側は describeAzureError で一行メッセージ化する）
+ * 4. 韻律なしで成功した場合は prosodyScore を undefined にして返す（カードの韻律欄は「―」表示）
+ *
+ * 接続テスト成功→提出時に失敗、という切り分けの手掛かりとして、リトライの有無を
+ * console.infoに残す（失敗の詳細は console.error に全文を残す）。
+ */
+export async function runAzurePronunciationAssessment(
+  params: RunAzurePronunciationAssessmentParams,
+): Promise<AzurePronunciationResult> {
+  const { pcm, referenceText, apiKey, region } = params;
+
+  // SDK本体は実際に採点を実行するときだけ読み込む（バンドル分割。ファイル冒頭コメント参照）。
+  const SpeechSDK = await import('microsoft-cognitiveservices-speech-sdk');
+  const wavBuffer = encodeWavPcm16(pcm, { sampleRate: 16000 });
+
+  let phrases: PhraseAssessment[];
+  let usedProsody = true;
+  let retried = false;
+
+  try {
+    phrases = await recognizeOnce(SpeechSDK, wavBuffer, referenceText, apiKey, region, true);
+    if (phrases.length === 0) {
+      throw new AzurePronunciationNoResultError();
+    }
+  } catch (firstErr) {
+    console.error(
+      '[azurePronunciation] 韻律ありでの発音評価に失敗しました。韻律なしで1回だけ自動リトライします。',
+      firstErr,
+    );
+    retried = true;
+    usedProsody = false;
+    try {
+      phrases = await recognizeOnce(SpeechSDK, wavBuffer, referenceText, apiKey, region, false);
+      if (phrases.length === 0) {
+        throw new AzurePronunciationNoResultError();
+      }
+    } catch (retryErr) {
+      console.error('[azurePronunciation] 韻律なしでの自動リトライも失敗しました。', retryErr);
+      console.info('[azurePronunciation] リトライ実施: あり（韻律あり失敗→韻律なしで再試行→こちらも失敗）');
+      throw retryErr;
+    }
+  }
+
+  console.info(
+    retried
+      ? '[azurePronunciation] リトライ実施: あり（韻律ありが失敗したため韻律なしで再試行し成功しました）'
+      : '[azurePronunciation] リトライ実施: なし（韻律ありで成功しました）',
+  );
+
   const aggregated = aggregatePhraseAssessments(phrases);
   if (!aggregated) {
     throw new AzurePronunciationNoResultError();
+  }
+  if (!usedProsody) {
+    // 韻律なしでの実行結果はProsodyScoreが常に既定値(0)になるため、誤解を招かないよう
+    // undefinedにする（DESIGN.md §8c M10:「成功したらprosodyScoreなしで保存・表示」）。
+    aggregated.prosodyScore = undefined;
   }
   return aggregated;
 }

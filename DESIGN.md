@@ -169,7 +169,7 @@ interface MaterialProgress {
 2. transformers.js の `automatic-speech-recognition` パイプライン（常にWASM。dtype:'q4'固定。dtype:'q8'はこのtransformers.js/onnxruntime-webの組み合わせだとセッション生成が`Missing required scale ... MatMulNBits`エラーで失敗するため使用不可と判明し、q4に変更した。WebGPU実行プロバイダにも対応する量子化カーネルが無いため使用しない）で文字起こし。モデルは初回DL後キャッシュ（Cache API）。ONNX Runtime WebのWASM実行は数分間メインスレッドをブロックしうる（iPhone Safari等で無応答ページとして強制終了されうる）ため、実処理は`whisper.worker.ts`（module worker）内で行い、UIスレッドをブロックしない
    - **モデル選択（M8）**: 設定ページで「高精度（`onnx-community/whisper-base.en`、初期値）/ 標準（`onnx-community/whisper-tiny.en`・高速）」を切替。選択は appState に保存し、判定・自己テスト双方が参照。baseはtiny比で認識誤りが目に見えて減るが、処理時間は約2倍・初回DLも大きい。切替時はワーカーのパイプラインを作り直して次回文字起こしから反映
 3. 整列: スクリプト語列 vs 認識語列を正規化（小文字化・約物除去・数字/短縮形の揺れ吸収）して Needleman-Wunsch（一致+1/不一致-1/ギャップ-1程度）で単語アライン → wordMarks生成。`src/lib/align.ts` 純関数・**Vitest必須**
-4. スコア: matchRate、WPM（認識語数/録音秒×60）
+4. スコア: matchRate、WPM。**WPMの分母は録音全体ではなく発話区間（M10）**: 録音PCMの先頭・末尾の無音（エネルギーしきい値ベース、例: RMS窓で最大値の3%未満が続く区間）を除いた「最初に声が出た時刻〜最後に声が出た時刻」を使う。冒頭のBGM中の待ち時間や停止ボタンまでの空白でWPMが過小になるのを防ぐ。`src/lib/audio.ts` か専用モジュールに純関数 `speechBounds(pcm, sampleRate)` として置き**Vitestテスト必須**（無音のみ・先頭無音・末尾無音・全区間発話のケース）。判定結果画面のWPM注記も「発話区間ベース」に更新
 5. Good/Development Point各3件をルールベース生成（例: 最長連続一致区間、前回提出比の改善、missedが集中した文とその文頭語、速度がお手本比±15%以内か等）。`src/lib/feedback.ts` 純関数・Vitestテスト
 
 ### 5b. 音声現象ベースの指摘と前回比較（M7）
@@ -214,7 +214,9 @@ interface MaterialProgress {
   - 説明文: 無料枠は月5時間で毎日数分なら0円 / 送信されるのは採点する提出音声とスクリプトのみ / キーは端末内にのみ保存
   - **backup.tsのエクスポートからazureSpeechKeyを除外**（バックアップファイル共有時のキー漏えい防止。restore時も上書きしない）
 - **採点フロー**: 提出時、キーが設定されていればWhisper採点の後に実行（進捗表示「発音スコア取得中…」）。
-  - PronunciationAssessmentConfig: referenceText=セクション全文、GradingSystem=HundredMark、Granularity=Phoneme、EnableProsodyAssessment、enableMiscue=true
+  - PronunciationAssessmentConfig: referenceText=セクション全文、GradingSystem=HundredMark、Granularity=Phoneme、EnableProsodyAssessment、enableMiscue=true。SpeechConfigの `speechRecognitionLanguage='en-US'` を明示
+  - **プロソディ・フォールバック（M10）**: 韻律採点はリージョンにより未対応の場合がある（東日本で失敗報告あり）。韻律有効で失敗（キャンセル/エラー）した場合は**韻律なし設定で1回だけ自動リトライ**し、成功したらprosodyScoreなしで保存・表示（カードの韻律欄は「―」）。両方失敗した場合のみエラー扱い
+  - **エラー詳細（M10）**: 失敗時は汎用文言に加え、SDKのcancellation errorDetails（先頭120字程度）を `azureError` に含めて表示する（原因特定を可能にする）
   - 音声は decodeToMono16k の結果をWAV(16kHz mono PCM16)化して pushStream で送る。60秒超に対応するため continuous recognition で最後まで処理し、複数結果はスコアを長さ加重で統合
   - 結果は `JudgeResult.azure?: { pronScore, accuracyScore, fluencyScore, prosodyScore, completenessScore, words: { word, accuracyScore, errorType }[] }` としてSubmissionに保存（optional・後方互換）
 - **表示**（判定結果画面）: 「発音スコア」カード＝総合/正確さ/流暢さ/韻律/完全性（0-100、80以上=緑/60-79=黄/60未満=赤）。スコアの低い単語ワースト5（点数付き）。エラー時は1行メッセージ（キー無効・ネットワーク等）のみ表示しWhisper結果は通常表示

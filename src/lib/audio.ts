@@ -100,3 +100,80 @@ export async function decodeToMono16k(blob: Blob): Promise<Float32Array> {
   const rendered = await offlineCtx.startRendering();
   return rendered.getChannelData(0);
 }
+
+export interface SpeechBounds {
+  /** 発話区間の開始秒（録音全体の先頭からの相対秒）。 */
+  startSec: number;
+  /** 発話区間の終了秒（録音全体の先頭からの相対秒）。 */
+  endSec: number;
+}
+
+/** RMSを計算する窓の長さ(秒)。 */
+const RMS_WINDOW_SEC = 0.02;
+/** 窓RMSの最大値に対し、この割合未満を無音とみなす（DESIGN.md §8手順4）。 */
+const SILENCE_THRESHOLD_RATIO = 0.03;
+/** 突発ノイズ（1〜数窓の短いスパイク）を発話の開始/終了と誤検出しないための最小連続発話時間(秒)。 */
+const MIN_VOICED_RUN_SEC = 0.1;
+/** 録音全体のピークRMSがこの値未満なら、実質無音（フロートの微小ノイズのみ）として扱う。 */
+const ABSOLUTE_SILENCE_FLOOR = 1e-4;
+
+/**
+ * 録音PCMの先頭・末尾の無音を除いた発話区間（最初に声が出た時刻〜最後に声が出た時刻）を求める
+ * 純関数（DESIGN.md §8手順4・M10）。
+ *
+ * RMS窓（20ms）ごとにエネルギーを求め、全体のピークRMSの3%未満を無音とみなす。ただし、
+ * 数windowだけの短い突発ノイズを発話の開始/終了と誤検出しないよう、しきい値を超える窓が
+ * MIN_VOICED_RUN_SEC（100ms）以上連続して初めて「発話区間」として採用する。
+ * 該当する連続区間が1つも無い場合（全体が無音、または短いノイズのみ）はnullを返す
+ * （呼び出し側は録音全体の長さへフォールバックする）。
+ */
+export function speechBounds(pcm: Float32Array, sampleRate: number): SpeechBounds | null {
+  if (pcm.length === 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) return null;
+
+  const windowSize = Math.max(1, Math.round(sampleRate * RMS_WINDOW_SEC));
+  const windowCount = Math.ceil(pcm.length / windowSize);
+  const rms: number[] = new Array(windowCount);
+  let maxRms = 0;
+  for (let w = 0; w < windowCount; w++) {
+    const start = w * windowSize;
+    const end = Math.min(pcm.length, start + windowSize);
+    let sumSq = 0;
+    for (let i = start; i < end; i++) sumSq += pcm[i] * pcm[i];
+    const value = Math.sqrt(sumSq / (end - start));
+    rms[w] = value;
+    if (value > maxRms) maxRms = value;
+  }
+
+  if (maxRms < ABSOLUTE_SILENCE_FLOOR) return null;
+
+  const threshold = maxRms * SILENCE_THRESHOLD_RATIO;
+  const minVoicedWindows = Math.max(1, Math.round(MIN_VOICED_RUN_SEC / RMS_WINDOW_SEC));
+
+  let firstVoicedWindow = -1;
+  let lastVoicedWindow = -1;
+  let runStart = -1;
+  for (let w = 0; w <= windowCount; w++) {
+    const isVoiced = w < windowCount && rms[w] >= threshold;
+    if (isVoiced) {
+      if (runStart < 0) runStart = w;
+      continue;
+    }
+    if (runStart >= 0) {
+      const runLength = w - runStart;
+      if (runLength >= minVoicedWindows) {
+        if (firstVoicedWindow < 0) firstVoicedWindow = runStart;
+        lastVoicedWindow = w - 1;
+      }
+      runStart = -1;
+    }
+  }
+
+  // 十分な長さの発話区間が1つも無い（全区間無音、または短い突発ノイズのみ）。
+  if (firstVoicedWindow < 0) return null;
+
+  const startSec = (firstVoicedWindow * windowSize) / sampleRate;
+  const endSampleExclusive = Math.min(pcm.length, (lastVoicedWindow + 1) * windowSize);
+  const endSec = endSampleExclusive / sampleRate;
+
+  return { startSec, endSec };
+}

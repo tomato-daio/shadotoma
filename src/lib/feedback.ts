@@ -27,7 +27,11 @@ export interface FeedbackInput {
   sentences: SentenceLike[];
   /** このスクリプトに対応しない、認識された余分な語（align.tsのinsertions）。 */
   insertions?: string[];
-  /** 提出音声から算出したWPM（DESIGN.md §8: 認識語数/録音秒×60）。 */
+  /**
+   * 提出音声から算出したWPM（認識語数/秒数×60）。DESIGN.md §8手順4・M10により、分母は
+   * 録音全体ではなく発話区間（speechBounds）の長さ。runJudge.tsで一度だけ計算した値を
+   * ここへそのまま渡す（judge.wpmと速度系Good/Dev Point判定の計算元を一箇所にするため）。
+   */
   wpm: number;
   /** お手本音声のWPM（スクリプト総語数/お手本再生時間×60）。無ければ速度比較は行わない。 */
   referenceWpm?: number;

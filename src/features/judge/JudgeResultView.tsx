@@ -30,7 +30,7 @@ export function JudgeResultView({ judge, previousMatchRate, transcript, classNam
     <div className={`flex flex-col gap-4 ${className}`}>
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="一致率" value={`${matchRatePercent}%`} />
-        <StatCard label="速さ" value={`${Math.round(judge.wpm)} WPM`} />
+        <StatCard label="速さ" value={`${Math.round(judge.wpm)} WPM`} note="発話区間ベース" />
       </div>
 
       {deltaPercent !== null ? (
@@ -172,7 +172,19 @@ function AzureScoreCard({ azure }: { azure: AzurePronunciationResult }) {
   );
 }
 
-function AzureScoreTile({ label, score }: { label: string; score: number }) {
+/**
+ * scoreがundefined（M10: 韻律採点が未対応リージョンで自動リトライ後のフォールバック）の場合は
+ * 「―」を表示し、色分けもしない（DESIGN.md §8c M10:「カードの韻律欄は―」）。
+ */
+function AzureScoreTile({ label, score }: { label: string; score?: number }) {
+  if (score === undefined) {
+    return (
+      <div className="rounded-md border border-neutral-200 bg-neutral-50 p-1.5 text-center">
+        <p className="text-sm font-bold text-neutral-400">―</p>
+        <p className="text-[10px] text-neutral-500">{label}</p>
+      </div>
+    );
+  }
   return (
     <div className={`rounded-md border p-1.5 text-center ${scoreBgClass(score)}`}>
       <p className={`text-sm font-bold ${scoreToneClass(score)}`}>{Math.round(score)}</p>
@@ -195,11 +207,12 @@ function AzureErrorNotice({ message }: { message: string }) {
   return <p className="rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-500">発音スコア: {message}</p>;
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="rounded-xl border border-neutral-200 p-3 text-center">
       <p className="text-xl font-bold text-tomato-600">{value}</p>
       <p className="text-xs text-neutral-400">{label}</p>
+      {note ? <p className="text-[10px] text-neutral-400">（{note}）</p> : null}
     </div>
   );
 }

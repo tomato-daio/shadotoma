@@ -12,7 +12,7 @@
  */
 
 import { alignWords, buildScriptWords } from '../../lib/align';
-import { decodeToMono16k } from '../../lib/audio';
+import { decodeToMono16k, speechBounds, WHISPER_SAMPLE_RATE } from '../../lib/audio';
 import type { JudgeResult, Sentence } from '../../lib/db';
 import { computeMatchRate, computeWpm, generateFeedback } from '../../lib/feedback';
 import { comparePreviousIssues, detectPhenomena, type PhenomenonIssue } from '../../lib/phenomena';
@@ -36,7 +36,11 @@ export type JudgeProgressCallback = (event: JudgeProgressEvent) => void;
 export interface RunJudgeParams {
   audioBlob: Blob;
   sentences: Sentence[];
-  /** 提出音声の長さ（秒）。WPM算出に使う。 */
+  /**
+   * 提出音声（録音全体）の長さ（秒）。
+   * WPM算出は発話区間ベース（DESIGN.md §8手順4・M10、lib/audio.ts speechBounds）が基本で、
+   * これは無音のみ等でspeechBoundsがnullを返した場合のフォールバック用の分母としてのみ使う。
+   */
   recordingDurationSec: number;
   /** お手本音声の長さ（秒）。指定時のみ速度比較の Good/Dev Point を生成する。 */
   referenceDurationSec?: number;
@@ -65,6 +69,9 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
   // transcribeAudio は pcm.buffer を transferable で worker へ渡し、呼び出し後にpcmを
   // 再利用できなくする（whisper.ts参照）。Azure採点でも同じPCMを使うため、渡す前に複製する。
   const pcmForAzure = azureEnabled ? pcm.slice() : null;
+  // DESIGN.md §8手順4・M10: WPMの分母を発話区間ベースにするため、pcmが上記のtransferableで
+  // 転送され使えなくなる前に、先頭・末尾の無音を除いた発話区間を計算しておく。
+  const bounds = speechBounds(pcm, WHISPER_SAMPLE_RATE);
 
   // M8: 設定ページで選択したモデル（appState 'whisperModel'）を毎回解決して使う。
   // 切替後の最初の判定からワーカー内でパイプラインが再構築され、新モデルが反映される。
@@ -76,7 +83,10 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
   const { wordMarks, insertions } = alignWords(scriptWords, recognizedWords);
 
   const matchRate = computeMatchRate(wordMarks);
-  const wpm = computeWpm(recognizedWords.length, recordingDurationSec);
+  // DESIGN.md §8手順4・M10: WPMは発話区間（無音を除いた「最初に声が出た時刻〜最後に声が出た時刻」）
+  // の長さを分母にする。speechBoundsがnull（無音のみ等）の場合のみ、従来どおり録音全体の長さを使う。
+  const speechDurationSec = bounds ? bounds.endSec - bounds.startSec : recordingDurationSec;
+  const wpm = computeWpm(recognizedWords.length, speechDurationSec);
   const referenceWpm =
     referenceDurationSec && referenceDurationSec > 0
       ? computeWpm(scriptWords.length, referenceDurationSec)

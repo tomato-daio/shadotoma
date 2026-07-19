@@ -7,6 +7,7 @@ import {
   aggregatePhraseAssessments,
   describeAzureError,
   toPhraseAssessment,
+  truncateDetail,
   worstWords,
   type AzureDetailResultLike,
   type PhraseAssessment,
@@ -192,13 +193,54 @@ describe('describeAzureError', () => {
     expect(describeAzureError(new AzurePronunciationNetworkError('offline'))).toContain('接続に失敗しました');
   });
 
-  it('未知のErrorは一行の日本語メッセージに包む', () => {
+  it('未知のErrorは一行の日本語メッセージに包む（DESIGN.md §8c M10の例の書式）', () => {
     const message = describeAzureError(new Error('boom'));
-    expect(message).toBe('発音スコアの取得に失敗しました（boom）。');
+    expect(message).toBe('発音スコアの取得に失敗しました: boom');
   });
 
   it('Error以外（文字列等）が投げられても壊れない', () => {
     const message = describeAzureError('plain string error');
-    expect(message).toBe('発音スコアの取得に失敗しました（plain string error）。');
+    expect(message).toBe('発音スコアの取得に失敗しました: plain string error');
+  });
+
+  it('長いエラー詳細は120字程度に切り詰めて含める（DESIGN.md §8c M10）', () => {
+    const longDetail = 'x'.repeat(200);
+    const message = describeAzureError(new Error(longDetail));
+    // 「発音スコアの取得に失敗しました: 」+ 120字 + '…'
+    expect(message.startsWith('発音スコアの取得に失敗しました: ')).toBe(true);
+    expect(message).toContain('…');
+    expect(message.length).toBeLessThan(150);
+  });
+
+  it('AzurePronunciationNetworkErrorの詳細も切り詰められる（メッセージが長すぎて1行表示を壊さないように）', () => {
+    const longDetail = 'y'.repeat(300);
+    const err = new AzurePronunciationNetworkError(longDetail);
+    expect(err.message).toContain('…');
+    expect(err.message.length).toBeLessThan(200);
+  });
+});
+
+describe('truncateDetail', () => {
+  it('maxLength以下ならそのまま返す', () => {
+    expect(truncateDetail('short text')).toBe('short text');
+  });
+
+  it('前後の空白を取り除く', () => {
+    expect(truncateDetail('  short text  ')).toBe('short text');
+  });
+
+  it('既定(120字)を超える場合は120字+…に切り詰める', () => {
+    const detail = 'a'.repeat(150);
+    const result = truncateDetail(detail);
+    expect(result).toBe(`${'a'.repeat(120)}…`);
+  });
+
+  it('maxLength引数で切り詰め長を指定できる', () => {
+    expect(truncateDetail('abcdefghij', 5)).toBe('abcde…');
+  });
+
+  it('ちょうどmaxLengthの長さなら…を付けない', () => {
+    const detail = 'a'.repeat(120);
+    expect(truncateDetail(detail)).toBe(detail);
   });
 });
