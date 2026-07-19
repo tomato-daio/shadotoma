@@ -253,7 +253,7 @@ interface MaterialProgress {
 
 **b. 前回結果ハイライト+コメントカード（シャドテン風）**
 - `usePracticeWizard` がマウント時に取得済みの直近judged提出から `previousJudge` を渡し、`src/lib/scriptFeedback.ts` が文ごとの表示データを組み立てる
-- できなかった語（wordMarksのmissed/sub、issuesの対象語）=ピンク地、improved=trueの前回指摘の語=青緑地。該当文の直下に「🔥 Development」（issues）/「✓ Good」（improved）カード
+- できなかった語（wordMarksのmissed/sub、issuesの対象語）=ピンク地、improved=trueの前回指摘の語=青緑地。「🔥 Development」（issues）/「✓ Good」（improved）カードは常時表示せず、**点線下線付きのハイライト語をタップしたときに該当文の直下へ開く**（再タップ・カードタップで閉じる）。タップアンカーが無いカード（語数不一致フォールバック時・位置マッチ0件の旧データ）のみ常時表示にフォールバック（`FeedbackCard.anchored`）
 - `PreviousIssueOutcome` はsiを持たないため、対象語が全てokで存在する文を逆引きする（comparePreviousIssuesと同じヒューリスティック）
 - スクリプト総語数とwordMarks長が不一致（教材差し替え等）ならハイライトを諦めプレーン表示にフォールバック（phenomena.tsのpositionsReliableと同じ安全側）
 
