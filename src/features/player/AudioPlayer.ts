@@ -11,6 +11,8 @@ export const DEFAULT_RATE = 1.0;
 export const REWIND_SECONDS = 3;
 /** timeupdateの粒度が粗いため、B地点判定に許容する誤差(秒)。 */
 export const AB_TOLERANCE = 0.25;
+/** ループ再開位置・AB区間として意味を持つ最小の再生窓(秒)。これ未満は即endedの暴走につながる。 */
+export const MIN_LOOP_WINDOW_SEC = 0.5;
 
 export interface ABPoints {
   a: number | null;
@@ -34,6 +36,27 @@ export function clampRate(rate: number): number {
   return Math.round(clamped / RATE_STEP) * RATE_STEP;
 }
 
+/**
+ * AB区間として意味を持つか（A<Bかつ最小窓以上）。A≧Bや極小区間はリピートとして成立せず、
+ * timeupdateのたびにA地点へ戻り続けて再生が進まなくなるため、無効（ABなし）として扱う。
+ */
+export function isValidABWindow(a: number | null, b: number | null): boolean {
+  return a !== null && b !== null && b - a >= MIN_LOOP_WINDOW_SEC;
+}
+
+/**
+ * ended後の自動リプレイの再開位置。A地点が末尾ぎりぎり（残り MIN_LOOP_WINDOW_SEC 未満）だと
+ * 「ended→シーク→play→即ended」の暴走ループでループ回数が急増するため、0秒からの再開に
+ * フォールバックする。durationが未確定(NaN/Infinity/0)の場合は判定できないのでA地点をそのまま使う。
+ */
+export function resolveRestartTime(a: number | null, duration: number): number {
+  const start = Math.max(0, a ?? 0);
+  if (Number.isFinite(duration) && duration > 0 && duration - start < MIN_LOOP_WINDOW_SEC) {
+    return 0;
+  }
+  return start;
+}
+
 /** preservesPitchのベンダープレフィックス吸収用。 */
 interface AudioElementWithVendorPitch extends HTMLAudioElement {
   mozPreservesPitch?: boolean;
@@ -47,6 +70,8 @@ export class AudioPlayer {
   private abPointB: number | null = null;
   private loopCount = 0;
   private loopEnabled = true;
+  /** 直近で自動リプレイ（ended→再生再開）を行った時刻(performance.now)。暴走ループの最終防波堤に使う。 */
+  private lastAutoRestartAt = 0;
 
   constructor(options: AudioPlayerOptions) {
     const { src, ...callbacks } = options;
@@ -68,8 +93,10 @@ export class AudioPlayer {
 
   private handleTimeUpdate = (): void => {
     const { currentTime, duration } = this.audio;
-    if (this.abPointA !== null && this.abPointB !== null && currentTime > this.abPointB + AB_TOLERANCE) {
-      this.audio.currentTime = this.abPointA;
+    const a = this.abPointA;
+    const b = this.abPointB;
+    if (a !== null && b !== null && isValidABWindow(a, b) && currentTime > b + AB_TOLERANCE) {
+      this.audio.currentTime = a;
     }
     this.callbacks.onTimeUpdate?.(currentTime, Number.isFinite(duration) ? duration : 0);
   };
@@ -79,7 +106,12 @@ export class AudioPlayer {
     this.callbacks.onLoopComplete?.(this.loopCount);
     this.callbacks.onEnded?.();
     if (this.loopEnabled) {
-      this.audio.currentTime = this.abPointA ?? 0;
+      // 最終防波堤: 直前の自動リプレイからごく短時間で再びendedが来た場合（音源自体が極端に短い等、
+      // resolveRestartTimeのガードでも1周が最小窓未満になるケース）は再生を再開せず暴走を止める。
+      const now = performance.now();
+      if (now - this.lastAutoRestartAt < MIN_LOOP_WINDOW_SEC * 1000) return;
+      this.lastAutoRestartAt = now;
+      this.audio.currentTime = resolveRestartTime(this.abPointA, this.audio.duration);
       void this.audio.play();
     }
   };
