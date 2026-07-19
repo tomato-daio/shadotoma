@@ -13,9 +13,9 @@
 import { pipeline, type AutomaticSpeechRecognitionPipeline, type ProgressInfo } from '@huggingface/transformers';
 import type { WhisperProgressEvent, WhisperWorkerRequest, WhisperWorkerResponse } from './whisper.protocol';
 
-const WHISPER_MODEL_ID = 'onnx-community/whisper-tiny.en';
-
 let cachedPipelinePromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
+/** 現在キャッシュ中のパイプラインが対応するモデルID（M8: モデル切替時の再構築判定に使う）。 */
+let cachedModelId: string | null = null;
 
 function toProgressEvent(info: ProgressInfo): WhisperProgressEvent | null {
   if (info.status === 'progress' && 'progress' in info && typeof info.progress === 'number') {
@@ -26,17 +26,27 @@ function toProgressEvent(info: ProgressInfo): WhisperProgressEvent | null {
 }
 
 /**
- * Whisperパイプラインを取得する（ワーカーのプロセス内で1回だけ構築し、以降は使い回す）。
- * モデルダウンロードの進捗は `onProgress` へ通知する。
+ * Whisperパイプラインを取得する（同一モデルIDの間はワーカーのプロセス内で1回だけ構築し、使い回す）。
+ * M8: モデルIDが前回と異なる場合はパイプラインを作り直す（設定ページでのモデル切替に対応）。
+ * 旧モデルのパイプラインは破棄してメモリを解放する。モデルダウンロードの進捗は `onProgress` へ通知する。
  */
-async function getPipeline(onProgress: (event: WhisperProgressEvent) => void): Promise<AutomaticSpeechRecognitionPipeline> {
-  if (!cachedPipelinePromise) {
+async function getPipeline(
+  modelId: string,
+  onProgress: (event: WhisperProgressEvent) => void,
+): Promise<AutomaticSpeechRecognitionPipeline> {
+  if (!cachedPipelinePromise || cachedModelId !== modelId) {
+    // モデル切替: 旧パイプラインは参照を手放す前にdisposeする（8GB RAM端末でbase+tinyの
+    // 二重保持を避けるため）。dispose失敗は無視してよい（新パイプライン構築を妨げない）。
+    if (cachedPipelinePromise) {
+      void cachedPipelinePromise.then((p) => p.dispose()).catch(() => {});
+    }
     // device: 'wasm' 固定。dtype: 'q4' 固定（q8を使わない理由の詳細は whisper.ts のコメント参照）。
     // WebGPU選択時もdtype:'q4'固定になってしまい、onnxruntime-webのWebGPU実行プロバイダには
     // 対応する量子化カーネルが無いため、webgpuデバイスはモデル構築・推論が失敗し続ける
     // （wasmへの自動フォールバックも存在しない）。将来WebGPUを使う場合は、量子化なし
     // （dtype:'fp32'）またはfp16版モデルとセットで別途対応すること。
-    cachedPipelinePromise = pipeline('automatic-speech-recognition', WHISPER_MODEL_ID, {
+    cachedModelId = modelId;
+    cachedPipelinePromise = pipeline('automatic-speech-recognition', modelId, {
       device: 'wasm',
       dtype: 'q4',
       progress_callback: (info: ProgressInfo) => {
@@ -45,7 +55,11 @@ async function getPipeline(onProgress: (event: WhisperProgressEvent) => void): P
       },
     }).catch((err: unknown) => {
       // 失敗時は次回リトライできるようキャッシュをクリアする
-      cachedPipelinePromise = null;
+      // （このリクエストの後に別モデルへ切り替わっていた場合は、そちらのキャッシュを消さない）
+      if (cachedModelId === modelId) {
+        cachedPipelinePromise = null;
+        cachedModelId = null;
+      }
       throw err;
     });
   }
@@ -59,9 +73,9 @@ function postResponse(response: WhisperWorkerResponse): void {
   self.postMessage(response);
 }
 
-async function handleTranscribe(id: number, pcm: Float32Array): Promise<void> {
+async function handleTranscribe(id: number, pcm: Float32Array, modelId: string): Promise<void> {
   try {
-    const transcriber = await getPipeline((event) => postResponse({ type: 'progress', id, event }));
+    const transcriber = await getPipeline(modelId, (event) => postResponse({ type: 'progress', id, event }));
     postResponse({ type: 'progress', id, event: { phase: 'transcribing' } });
 
     // 60秒を超える音声にも対応できるよう、内部でチャンク分割（chunk_length_s）を行う。
@@ -77,6 +91,6 @@ self.onmessage = (ev: MessageEvent<WhisperWorkerRequest>) => {
   const msg = ev.data;
   if (msg.type === 'transcribe') {
     // 直前のリクエストの完了を待ってから処理する（結果が返る順序も呼び出し順のまま維持される）。
-    queue = queue.then(() => handleTranscribe(msg.id, msg.pcm));
+    queue = queue.then(() => handleTranscribe(msg.id, msg.pcm, msg.modelId));
   }
 };

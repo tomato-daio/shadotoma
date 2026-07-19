@@ -186,21 +186,111 @@ describe('generateFeedback', () => {
     expect(devPoints[0]).toContain('音声がほとんど認識できませんでした');
   });
 
-  // DESIGN.md §8 5b: 音声現象ベースの指摘と前回比較
+  // DESIGN.md §8 5b: 音声現象ベースの指摘と前回比較（M8: 文言は実際の検出語から組み立てる）
   describe('issues（音声現象ベースの指摘）', () => {
     function issue(type: PhenomenonIssue['type'], words: string[], si = 0): PhenomenonIssue {
       return { type, words, si };
     }
 
-    it('issuesをカタカナヒント付きのDevelopment Pointに変換し、issuesとして返す', () => {
+    it('linking + 辞書ヒットあり: 実語ペア・綴りから取った文字・合成カタカナで文言を組み立てる', () => {
       const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
       const issues = [issue('linking', ['turned', 'on'])];
       const result = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
-      expect(result.devPoints.some((p) => p.includes('turned on') && p.includes('連結'))).toBe(true);
+      expect(result.devPoints).toContain(
+        '「turned on」の連結が言えていませんでした。turned on は d と o がつながって1語のように聞こえます（「ターンドン」のような音です）。',
+      );
       expect(result.issues).toEqual(issues);
     });
 
-    it('4件以上あるissuesは同一typeの多発を優先して3件に絞る', () => {
+    it('linking + 辞書ヒットなし: カタカナを付けず文字ベースの説明のみにする', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('linking', ['picked', 'it'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toContain(
+        '「picked it」の連結が言えていませんでした。picked it は d と i がつながって1語のように聞こえます。',
+      );
+    });
+
+    it('flap + 辞書ヒットあり: 実語のtのラ行化をフラップ読みつきで説明する', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('flap', ['water'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toContain(
+        '「water」のフラップ（tの軽い音）が言えていませんでした。water の t が弱いラ行のような音になります（「ワラ」のような音です）。',
+      );
+    });
+
+    it('flap + 辞書ヒットなし: カタカナを付けず文字ベースの説明のみにする', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('flap', ['letter'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toContain(
+        '「letter」のフラップ（tの軽い音）が言えていませんでした。letter の t が弱いラ行のような音になります。',
+      );
+    });
+
+    it('weak + 辞書ヒットあり: 実語の弱形を読みつきで説明する', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('weak', ['of'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toContain(
+        '「of」の弱形が言えていませんでした。of は弱く速く発音されます（弱く短い「オヴ」のような音です）。',
+      );
+    });
+
+    it('elision + 辞書ヒットあり: 実語ペアの語末音の脱落を合成読みつきで説明する', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('elision', ['next', 'day.'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toContain(
+        '「next day」の脱落が言えていませんでした。next day は t の音がほとんど落ちます（「ネクスデイ」のような音です）。',
+      );
+    });
+
+    it('ending: 実語の語尾(-ed)を名指しし、カタカナは付けない', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('ending', ['wanted'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(devPoints).toContain(
+        '「wanted」の語尾(-s/-ed)が言えていませんでした。wanted の語尾 -ed が弱くなります。',
+      );
+    });
+
+    it('検出語と無関係な固定例文（turned on/ターンドン/ワラ/ネクスデイ等）を使い回さない', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [
+        issue('linking', ['picked', 'it']),
+        issue('flap', ['letter']),
+        issue('weak', ['his']),
+      ];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      const joined = devPoints.join(' ');
+      // 検出された実語は文言に含まれる
+      expect(joined).toContain('picked it');
+      expect(joined).toContain('letter');
+      expect(joined).toContain('his');
+      // 検出語ではない固定の例文・カタカナは一切含まれない
+      for (const banned of ['turned on', 'ターンドン', 'water', 'ワラ', 'next day', 'ネクスデイ', 'wanted', 'ワニッ']) {
+        expect(joined).not.toContain(banned);
+      }
+    });
+
+    it('同typeが複数検出された場合は1つの文言にまとめ、実語ペアを最大2つ列挙する', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [
+        issue('linking', ['picked', 'it']),
+        issue('linking', ['found', 'a']),
+        issue('linking', ['turned', 'on']),
+      ];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      const linkingPoints = devPoints.filter((p) => p.includes('連結'));
+      expect(linkingPoints).toHaveLength(1);
+      expect(linkingPoints[0]).toContain('「picked it」「found a」のような連結');
+      // 3ペア目は列挙しない（最大2ペア）
+      expect(linkingPoints[0]).not.toContain('turned on');
+    });
+
+    it('4件以上あるissuesは同一typeの多発を優先して3件に絞る（保存用issuesは3件のまま）', () => {
       const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
       const issues = [
         issue('weak', ['of']),
@@ -211,7 +301,17 @@ describe('generateFeedback', () => {
       const result = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
       expect(result.issues).toHaveLength(3);
       expect(result.issues.every((i) => i.type === 'weak')).toBe(true);
-      expect(result.devPoints.filter((p) => p.includes('弱形'))).toHaveLength(3);
+      // 3件のweakは1つの文言にまとまり、先頭2語（of, to）が列挙される
+      const weakPoints = result.devPoints.filter((p) => p.includes('弱形'));
+      expect(weakPoints).toHaveLength(1);
+      expect(weakPoints[0]).toContain('「of」「to」のような弱形');
+    });
+
+    it('同一文言になる指摘が重複しても、devPointsには1回しか載らない', () => {
+      const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+      const issues = [issue('weak', ['of']), issue('linking', ['picked', 'it'])];
+      const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+      expect(new Set(devPoints).size).toBe(devPoints.length);
     });
 
     it('issuesが3件に満たない場合は既存の一般指摘（missed集中文など）で補う', () => {
@@ -222,7 +322,7 @@ describe('generateFeedback', () => {
       const issues = [issue('weak', ['of'])];
       const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
       expect(devPoints).toHaveLength(3);
-      expect(devPoints.some((p) => p.includes('弱形'))).toBe(true);
+      expect(devPoints.some((p) => p.includes('「of」の弱形'))).toBe(true);
       expect(devPoints.some((p) => p.includes(SENTENCES[0].en))).toBe(true);
     });
 

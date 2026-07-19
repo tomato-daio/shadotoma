@@ -13,6 +13,7 @@ import type { JudgeResult, Sentence } from '../../lib/db';
 import { computeMatchRate, computeWpm, generateFeedback } from '../../lib/feedback';
 import { comparePreviousIssues, detectPhenomena, type PhenomenonIssue } from '../../lib/phenomena';
 import { transcribeAudio, type WhisperProgressCallback } from './whisper';
+import { getSelectedWhisperModelKey, whisperModelIdFor } from './whisperModels';
 
 export interface RunJudgeParams {
   audioBlob: Blob;
@@ -38,7 +39,10 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
     params;
 
   const pcm = await decodeToMono16k(audioBlob);
-  const transcript = await transcribeAudio(pcm, onProgress);
+  // M8: 設定ページで選択したモデル（appState 'whisperModel'）を毎回解決して使う。
+  // 切替後の最初の判定からワーカー内でパイプラインが再構築され、新モデルが反映される。
+  const modelKey = await getSelectedWhisperModelKey();
+  const transcript = await transcribeAudio(pcm, whisperModelIdFor(modelKey), onProgress);
 
   const scriptWords = buildScriptWords(sentences);
   const recognizedWords = transcript.length > 0 ? transcript.split(/\s+/).filter(Boolean) : [];

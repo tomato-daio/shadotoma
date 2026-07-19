@@ -166,7 +166,8 @@ interface MaterialProgress {
 `src/features/judge/`
 
 1. 提出音声Blob → AudioContext.decodeAudioData → 16kHzモノラルFloat32へリサンプル
-2. transformers.js の `automatic-speech-recognition` パイプライン（`onnx-community/whisper-tiny.en` 量子化, 常にWASM。dtype:'q4'固定。dtype:'q8'はこのtransformers.js/onnxruntime-webの組み合わせだとセッション生成が`Missing required scale ... MatMulNBits`エラーで失敗するため使用不可と判明し、q4に変更した。WebGPU実行プロバイダにも対応する量子化カーネルが無いため使用しない）で文字起こし。モデルは初回DL後キャッシュ（Cache API）。ONNX Runtime WebのWASM実行は数分間メインスレッドをブロックしうる（iPhone Safari等で無応答ページとして強制終了されうる）ため、実処理は`whisper.worker.ts`（module worker）内で行い、UIスレッドをブロックしない
+2. transformers.js の `automatic-speech-recognition` パイプライン（常にWASM。dtype:'q4'固定。dtype:'q8'はこのtransformers.js/onnxruntime-webの組み合わせだとセッション生成が`Missing required scale ... MatMulNBits`エラーで失敗するため使用不可と判明し、q4に変更した。WebGPU実行プロバイダにも対応する量子化カーネルが無いため使用しない）で文字起こし。モデルは初回DL後キャッシュ（Cache API）。ONNX Runtime WebのWASM実行は数分間メインスレッドをブロックしうる（iPhone Safari等で無応答ページとして強制終了されうる）ため、実処理は`whisper.worker.ts`（module worker）内で行い、UIスレッドをブロックしない
+   - **モデル選択（M8）**: 設定ページで「高精度（`onnx-community/whisper-base.en`、初期値）/ 標準（`onnx-community/whisper-tiny.en`・高速）」を切替。選択は appState に保存し、判定・自己テスト双方が参照。baseはtiny比で認識誤りが目に見えて減るが、処理時間は約2倍・初回DLも大きい。切替時はワーカーのパイプラインを作り直して次回文字起こしから反映
 3. 整列: スクリプト語列 vs 認識語列を正規化（小文字化・約物除去・数字/短縮形の揺れ吸収）して Needleman-Wunsch（一致+1/不一致-1/ギャップ-1程度）で単語アライン → wordMarks生成。`src/lib/align.ts` 純関数・**Vitest必須**
 4. スコア: matchRate、WPM（認識語数/録音秒×60）
 5. Good/Development Point各3件をルールベース生成（例: 最長連続一致区間、前回提出比の改善、missedが集中した文とその文頭語、速度がお手本比±15%以内か等）。`src/lib/feedback.ts` 純関数・Vitestテスト
@@ -182,7 +183,8 @@ interface MaterialProgress {
   - 弱形: 機能語（of, to, for, and, them, can等）の missed（弱く速く発音される語）
   - 語尾の -s/-ed: sub で語幹が一致し語尾だけ違う（wanted→want）
 - **JudgeResult拡張**: `issues: { type: 'linking'|'flap'|'elision'|'weak'|'ending'; words: string[]; si: number }[]` を追加保存（既存データはissues無しでも壊れないようoptional）
-- **Development Point生成**: 検出結果を優先度順（同一typeの多発 > 単発）に**毎回3件へ絞り**、カタカナのヒント付き文言で出す（例: 「turned on の連結（ターンドン）が言えていません」）
+- **Development Point生成**: 検出結果を優先度順（同一typeの多発 > 単発）に**毎回3件へ絞り**、ヒント付き文言で出す
+- **文言は必ずその教材の実際の語から組み立てる（M8）**: 固定の例文（turned on→ターンドン等）を教材と無関係に使い回してはならない。ヒントの構成: (1) 検出された実際の語（同typeが複数あれば最大2ペア列挙）、(2) つながる/落ちる実際の音を文字で示す（例: 「picked it」は d と i がつながります）、(3) カタカナヒントは「頻出語の辞書（約60語＋機能語ペア）にある場合」と「単純な綴りで機械変換の信頼度が高い場合」のみ付け、無理な自動変換はしない（誤ったカタカナを出すくらいなら文字ベースの説明だけにする）
 - **前回比較**: 同一教材の前回提出の issues と比較し、判定結果画面に「前回の指摘」欄を出す: 前回指摘の語が今回 ok → 「✅ 改善」、まだ missed/sub → 「△ もう一歩」。Good Pointにも「前回指摘の◯◯が改善」を優先的に採用
 - 検出はあくまでスクリプト文字列＋認識結果からのヒューリスティック（音素解析はしない）。断定調を避け「〜の可能性」の文言にはしない（シャドテン同様言い切るが、対象語を明示して根拠を示す）
 6. 失敗時フォールバック: モデルDL失敗/実行エラー時は「AIに詳しく添削してもらう」（スクリプト+状況を定型プロンプトでクリップボードコピー→ChatGPT/Claudeに貼る）だけを表示

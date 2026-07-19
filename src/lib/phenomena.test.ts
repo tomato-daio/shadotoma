@@ -4,12 +4,24 @@ import {
   comparePreviousIssues,
   detectPhenomena,
   prioritizeIssues,
+  stripPunct,
   type PhenomenonIssue,
 } from './phenomena';
 
 function mark(word: string, si: number, status: WordMark['status'], recognized?: string): WordMark {
   return recognized !== undefined ? { word, si, status, recognized } : { word, si, status };
 }
+
+describe('stripPunct（M8: feedback.tsの実語ベース文言生成で再利用する公開ヘルパー）', () => {
+  it('前後の約物を除去し小文字化する', () => {
+    expect(stripPunct('Day.')).toBe('day');
+    expect(stripPunct('"Hello,"')).toBe('hello');
+  });
+
+  it('内部のアポストロフィは保持する', () => {
+    expect(stripPunct("Korea's")).toBe("korea's");
+  });
+});
 
 describe('detectPhenomena / linking（リンキング）', () => {
   it('子音終わり+母音始まりのペアがmissedなら連結を検出する', () => {

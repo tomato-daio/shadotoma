@@ -32,8 +32,12 @@ export interface PreviousIssueOutcome {
 
 // ---- 正規化ヘルパー ----
 
-/** 前後の約物を除去し小文字化する（align.tsのnormalizeWordより単純: 内部のアポストロフィは保持する）。 */
-function stripPunct(word: string): string {
+/**
+ * 前後の約物を除去し小文字化する（align.tsのnormalizeWordより単純: 内部のアポストロフィは保持する）。
+ * feedback.ts（M8: 実語ベースのDevelopment Point文言）が語頭・語末の文字抽出と
+ * カタカナ辞書の照合に再利用するため公開する。
+ */
+export function stripPunct(word: string): string {
   return word
     .toLowerCase()
     .replace(/^[^a-z']+/, '')

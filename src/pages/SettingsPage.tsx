@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { SelfTest } from '../features/judge/SelfTest';
+import {
+  getSelectedWhisperModelKey,
+  setSelectedWhisperModelKey,
+  WHISPER_MODEL_OPTIONS,
+  type WhisperModelKey,
+} from '../features/judge/whisperModels';
 import { buildBackupFileName, exportAllData, importAllData } from '../lib/backup';
 import { useMaterialsStore } from '../stores/useMaterialsStore';
 
@@ -13,11 +19,28 @@ export function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [versionTapCount, setVersionTapCount] = useState(0);
+  // null = 読み込み中（読み込み完了までボタンを出さず、初期値の点滅を避ける）
+  const [whisperModelKey, setWhisperModelKey] = useState<WhisperModelKey | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!loaded) void refresh();
   }, [loaded, refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getSelectedWhisperModelKey().then((key) => {
+      if (!cancelled) setWhisperModelKey(key);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSelectWhisperModel = (key: WhisperModelKey) => {
+    setWhisperModelKey(key);
+    void setSelectedWhisperModelKey(key);
+  };
 
   // 開発ビルド（`npm run dev`）では常に表示。本番ビルドではアプリ情報を連打した時だけ表示する。
   const showSelfTest = import.meta.env.DEV || versionTapCount >= HIDDEN_UNLOCK_TAP_COUNT;
@@ -80,6 +103,46 @@ export function SettingsPage() {
           <p className="text-sm font-medium text-neutral-700">アプリ情報</p>
           <p className="mt-1 text-xs text-neutral-400">シャドとま v0.1.0（M3）</p>
         </button>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-xl border border-neutral-200 p-4">
+        <p className="text-sm font-medium text-neutral-700">添削の精度</p>
+        <p className="text-xs text-neutral-400">
+          提出の添削（AI文字起こし）に使うモデルを選べます。高精度は認識ミスが減りますが、
+          処理時間が標準の約2倍かかり、初回に大きめのモデルのダウンロードが発生します。
+          切り替えは次回の添削から反映されます。
+        </p>
+        {whisperModelKey !== null ? (
+          <div className="flex flex-col gap-2" role="radiogroup" aria-label="添削の精度">
+            {WHISPER_MODEL_OPTIONS.map((option) => {
+              const selected = option.key === whisperModelKey;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => handleSelectWhisperModel(option.key)}
+                  className={`rounded-lg border px-3 py-2 text-left ${
+                    selected
+                      ? 'border-tomato-500 bg-tomato-50'
+                      : 'border-neutral-200 bg-white active:bg-neutral-50'
+                  }`}
+                >
+                  <span
+                    className={`text-sm font-semibold ${selected ? 'text-tomato-700' : 'text-neutral-700'}`}
+                  >
+                    {selected ? '● ' : '○ '}
+                    {option.label}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-400">{option.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-neutral-400">読み込み中…</p>
+        )}
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-neutral-200 p-4">

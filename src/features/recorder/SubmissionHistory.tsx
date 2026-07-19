@@ -99,7 +99,12 @@ function SubmissionItem({
       </div>
       {expanded && judge ? (
         <div className="mt-3 border-t border-neutral-100 pt-3">
-          <JudgeResultView judge={judge} previousMatchRate={previousMatchRate} />
+          {/* M8: 過去提出でも保存済みtranscriptから「あなたの発話」を表示する（無い提出では非表示） */}
+          <JudgeResultView
+            judge={judge}
+            previousMatchRate={previousMatchRate}
+            transcript={submission.transcript}
+          />
         </div>
       ) : null}
     </li>

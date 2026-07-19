@@ -29,6 +29,8 @@ export function PracticePage() {
   const [judgeProgress, setJudgeProgress] = useState<number | null>(null);
   const [judgeError, setJudgeError] = useState<string | null>(null);
   const [lastJudge, setLastJudge] = useState<JudgeResult | null>(null);
+  // M8: 提出直後の結果画面に「あなたの発話（書き起こし）」を表示するために保持する
+  const [lastTranscript, setLastTranscript] = useState<string | undefined>(undefined);
   const [previousMatchRate, setPreviousMatchRate] = useState<number | undefined>(undefined);
   const [fallbackCopied, setFallbackCopied] = useState(false);
   const [fallbackSituation, setFallbackSituation] = useState('');
@@ -41,6 +43,7 @@ export function PracticePage() {
     setJudgeProgress(null);
     setJudgeError(null);
     setLastJudge(null);
+    setLastTranscript(undefined);
     setFallbackCopied(false);
     void getMaterial(materialId).then((m) => {
       if (!cancelled) setMaterial(m ?? null);
@@ -100,6 +103,7 @@ export function PracticePage() {
     setJudgeProgress(null);
     setJudgeError(null);
     setLastJudge(null);
+    setLastTranscript(undefined);
     setFallbackCopied(false);
 
     try {
@@ -130,6 +134,7 @@ export function PracticePage() {
         await markMaterialProgressDone(materialId, date);
       }
       setLastJudge(judge);
+      setLastTranscript(transcript);
       setJudgeStatus('done');
       setRefreshKey((k) => k + 1);
       return { matchRate: judge.matchRate };
@@ -186,6 +191,7 @@ export function PracticePage() {
         error={judgeError}
         judge={lastJudge}
         previousMatchRate={previousMatchRate}
+        transcript={lastTranscript}
         onCopyFallback={() => void handleCopyFallback()}
         fallbackCopied={fallbackCopied}
       />

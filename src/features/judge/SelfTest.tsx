@@ -3,6 +3,7 @@ import { alignWords, buildScriptWords } from '../../lib/align';
 import { decodeToMono16k, WHISPER_SAMPLE_RATE } from '../../lib/audio';
 import type { Material } from '../../lib/db';
 import { transcribeAudio, type WhisperProgressEvent } from './whisper';
+import { getSelectedWhisperModelKey, whisperModelIdFor, WHISPER_MODEL_OPTIONS } from './whisperModels';
 
 /** 自己テストで文字起こしする冒頭部分の長さ（秒）。実行時間短縮のため全音声ではなくここだけを使う。 */
 const SELF_TEST_CLIP_SEC = 60;
@@ -23,6 +24,8 @@ interface SelfTestState {
   progress?: number;
   precision?: number;
   materialTitle?: string;
+  /** 使用したモデルの表示ラベル（M8: モデル切替が自己テストにも反映されていることを確認できるように）。 */
+  modelLabel?: string;
   error?: string;
 }
 
@@ -67,7 +70,11 @@ export function SelfTest({ materials }: SelfTestProps) {
       return;
     }
 
-    setState({ status: 'running', materialTitle: material.title });
+    // M8: 設定ページで選択したモデル（appState 'whisperModel'）を自己テストでも参照する。
+    const modelKey = await getSelectedWhisperModelKey();
+    const modelLabel = WHISPER_MODEL_OPTIONS.find((o) => o.key === modelKey)?.label ?? modelKey;
+
+    setState({ status: 'running', materialTitle: material.title, modelLabel });
     try {
       const res = await fetch(`${import.meta.env.BASE_URL}${material.audioUrl}`);
       if (!res.ok) throw new Error(`音声の取得に失敗しました (HTTP ${res.status})`);
@@ -78,7 +85,7 @@ export function SelfTest({ materials }: SelfTestProps) {
       const clipLength = Math.min(fullPcm.length, WHISPER_SAMPLE_RATE * SELF_TEST_CLIP_SEC);
       const pcm = fullPcm.slice(0, clipLength);
 
-      const transcript = await transcribeAudio(pcm, (event) => {
+      const transcript = await transcribeAudio(pcm, whisperModelIdFor(modelKey), (event) => {
         setState((s) => ({ ...s, phase: event.phase, progress: event.progress }));
       });
 
@@ -89,7 +96,7 @@ export function SelfTest({ materials }: SelfTestProps) {
       const { matchedCount } = alignWords(scriptWords, recognizedWords);
       const precision = recognizedWords.length > 0 ? matchedCount / recognizedWords.length : 0;
 
-      setState({ status: 'done', precision, materialTitle: material.title });
+      setState({ status: 'done', precision, materialTitle: material.title, modelLabel });
     } catch (err) {
       setState({
         status: 'error',
@@ -117,7 +124,7 @@ export function SelfTest({ materials }: SelfTestProps) {
 
       {state.status === 'running' ? (
         <p className="text-xs text-neutral-500">
-          [{state.materialTitle}]{' '}
+          [{state.materialTitle}]{state.modelLabel ? ` モデル: ${state.modelLabel} / ` : ' '}
           {state.phase
             ? `${PHASE_LABEL[state.phase]}${
                 state.phase === 'model-download' && state.progress !== undefined
@@ -134,7 +141,8 @@ export function SelfTest({ materials }: SelfTestProps) {
             state.precision > SELF_TEST_PASS_THRESHOLD ? 'text-green-700' : 'text-red-600'
           }`}
         >
-          [{state.materialTitle}] precision(冒頭{SELF_TEST_CLIP_SEC}秒) = {(state.precision * 100).toFixed(1)}% (
+          [{state.materialTitle}]{state.modelLabel ? ` ${state.modelLabel} /` : ''} precision(冒頭
+          {SELF_TEST_CLIP_SEC}秒) = {(state.precision * 100).toFixed(1)}% (
           {state.precision > SELF_TEST_PASS_THRESHOLD ? '合格' : '要確認'})
         </p>
       ) : null}

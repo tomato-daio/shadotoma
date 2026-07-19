@@ -19,6 +19,11 @@ export interface WhisperTranscribeRequest {
   id: number;
   /** 16kHzモノラルPCM。呼び出し側からtransferable（ArrayBuffer所有権譲渡）で受け渡される想定。 */
   pcm: Float32Array;
+  /**
+   * 使用するWhisperモデルID（M8: 設定ページで切替可能。whisperModels.tsのWHISPER_MODEL_IDSの値）。
+   * ワーカーはappState/IndexedDBに触れないため、UIスレッド側で解決済みの文字列を必ず渡す。
+   */
+  modelId: string;
 }
 
 export type WhisperWorkerRequest = WhisperTranscribeRequest;

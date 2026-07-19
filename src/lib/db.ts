@@ -41,6 +41,9 @@ export interface WordMark {
   word: string;
   si: number; // 文index
   status: 'ok' | 'missed' | 'sub';
+  // status==='sub'のときに実際に認識された語（M7でalign.tsが設定済み。M8で判定結果画面の
+  // 「(→ 聞こえた語)」表示に使う。既存データに無くてもoptionalのため後方互換）。
+  recognized?: string;
 }
 
 // JudgeResult（M3で実装。型だけ先に定義）

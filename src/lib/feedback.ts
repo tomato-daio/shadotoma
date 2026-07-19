@@ -10,7 +10,13 @@
  */
 
 import type { WordMark } from './align';
-import { prioritizeIssues, type PhenomenonIssue, type PhenomenonType, type PreviousIssueOutcome } from './phenomena';
+import {
+  prioritizeIssues,
+  stripPunct,
+  type PhenomenonIssue,
+  type PhenomenonType,
+  type PreviousIssueOutcome,
+} from './phenomena';
 
 export interface SentenceLike {
   en: string;
@@ -146,7 +152,7 @@ function truncateForDisplay(text: string, maxLength = 60): string {
   return `${text.slice(0, maxLength)}…`;
 }
 
-/** 音声現象タイプの日本語ラベル（Good Point「前回指摘の◯◯が改善」等の表示に使う）。 */
+/** 音声現象タイプの日本語ラベル（Development Pointの現象名と、Good Point「前回指摘の◯◯が改善」の表示に使う）。 */
 const PHENOMENON_LABEL: Record<PhenomenonType, string> = {
   linking: '連結',
   flap: 'フラップ（tの軽い音）',
@@ -155,25 +161,207 @@ const PHENOMENON_LABEL: Record<PhenomenonType, string> = {
   ending: '語尾(-s/-ed)',
 };
 
+// ---- 実語ベースのDevelopment Point文言（DESIGN.md §8 5b・M8）----
+//
+// 固定の例文（turned on→ターンドン等）を教材と無関係に使い回すことは禁止。
+// 文言は必ず検出された実際の語（PhenomenonIssue.words）から組み立てる:
+// (1) 検出された実語ペアを主役に（同typeが複数あれば最大2ペア列挙）
+// (2) 現象の説明は実際の語の綴りから取り出した文字で示す（例: picked it は d と i がつながる）
+// (3) カタカナヒントは下記の手書き小辞書に載っている語（ペアは両方）のみ、読みを合成して付ける。
+//     機械的な英語→カタカナ自動変換器は作らない（誤ったカタカナを出すくらいなら文字説明のみ）。
+
 /**
- * 音声現象の指摘をカタカナヒント付きのDevelopment Point文言にする（DESIGN.md §8 5b）。
- * カタカナ化は簡易でよい方針のとおり、対象語ペアの列挙＋現象名の説明＋固定の例示のみで構成し、
- * 任意の語を無理に自動カタカナ変換することはしない。
+ * 頻出語・機能語のカタカナ読み小辞書（約60語・人手で記載）。
+ * キーはstripPunct後の形（小文字・前後約物なし・内部アポストロフィ保持）。
+ * ここに無い語にはカタカナヒントを付けない（自動変換はしない）。
  */
-function phenomenonHint(issue: PhenomenonIssue): string {
-  const words = `「${issue.words.join(' ')}」`;
+const KATAKANA_DICT: Record<string, string> = {
+  // 機能語（phenomena.tsのWEAK_FORM_WORDSと同じ語彙）
+  a: 'ア', an: 'アン', and: 'アンド', as: 'アズ', at: 'アット', but: 'バット',
+  can: 'キャン', could: 'クッド', do: 'ドゥ', does: 'ダズ', for: 'フォー', from: 'フロム',
+  had: 'ハッド', has: 'ハズ', have: 'ハヴ', he: 'ヒー', her: 'ハー', him: 'ヒム',
+  his: 'ヒズ', is: 'イズ', must: 'マスト', of: 'オヴ', shall: 'シャル', she: 'シー',
+  should: 'シュッド', some: 'サム', than: 'ザン', that: 'ザット', the: 'ザ', them: 'ゼム',
+  to: 'トゥ', us: 'アス', was: 'ワズ', we: 'ウィー', were: 'ワー', who: 'フー',
+  would: 'ウッド', you: 'ユー', your: 'ユア', are: 'アー', am: 'アム', been: 'ビーン',
+  or: 'オア', not: 'ノット', there: 'ゼア',
+  // 頻出の内容語（リンキング・フラップ・脱落の例に出やすい語）
+  water: 'ウォーター', better: 'ベター', little: 'リトル', city: 'シティ',
+  got: 'ガット', get: 'ゲット', it: 'イット', on: 'オン', in: 'イン',
+  want: 'ウォント', went: 'ウェント', turned: 'ターンド', next: 'ネクスト', day: 'デイ',
+  just: 'ジャスト', now: 'ナウ', out: 'アウト', up: 'アップ', about: 'アバウト',
+  all: 'オール', one: 'ワン', good: 'グッド', put: 'プット', off: 'オフ',
+};
+
+/**
+ * フラップ（母音に挟まれたt）を含む語の、フラップ発音の読み（人手で記載）。
+ * 「tがラ行化した読み」は機械合成すると誤りやすいため、代表語のみ直接持つ。
+ */
+const FLAP_READINGS: Record<string, string> = {
+  water: 'ワラ',
+  better: 'ベラ',
+  little: 'リロ',
+  city: 'スィリ',
+};
+
+/**
+ * カタカナ読み合成用: 子音ごとの「子音+ア/イ/ウ/エ/オ」のカタカナ。
+ * ティ/トゥ/ディ/ドゥ等の不規則形を正しく出すため配列で持つ。
+ */
+const MERGE_ROWS: Record<string, [string, string, string, string, string]> = {
+  k: ['カ', 'キ', 'ク', 'ケ', 'コ'],
+  g: ['ガ', 'ギ', 'グ', 'ゲ', 'ゴ'],
+  s: ['サ', 'スィ', 'ス', 'セ', 'ソ'],
+  z: ['ザ', 'ズィ', 'ズ', 'ゼ', 'ゾ'],
+  t: ['タ', 'ティ', 'トゥ', 'テ', 'ト'],
+  d: ['ダ', 'ディ', 'ドゥ', 'デ', 'ド'],
+  n: ['ナ', 'ニ', 'ヌ', 'ネ', 'ノ'],
+  b: ['バ', 'ビ', 'ブ', 'ベ', 'ボ'],
+  p: ['パ', 'ピ', 'プ', 'ペ', 'ポ'],
+  m: ['マ', 'ミ', 'ム', 'メ', 'モ'],
+  r: ['ラ', 'リ', 'ル', 'レ', 'ロ'],
+  f: ['ファ', 'フィ', 'フ', 'フェ', 'フォ'],
+  v: ['ヴァ', 'ヴィ', 'ヴ', 'ヴェ', 'ヴォ'],
+};
+
+/** 読みの末尾カタカナ → その子音（合成可能なもののみ。ー/ン以外の母音終わり等は合成しない）。 */
+const FINAL_KANA_CONSONANT: Record<string, string> = {
+  ク: 'k', グ: 'g', ス: 's', ズ: 'z', ト: 't', ド: 'd', ン: 'n',
+  ブ: 'b', プ: 'p', ム: 'm', ル: 'r', フ: 'f', ヴ: 'v',
+};
+
+const VOWEL_KANA = 'アイウエオ';
+const SMALL_KANA = 'ァィゥェォャュョ';
+
+/**
+ * ペアの読みを連結発音として合成する（例: ターンド + オン → ターンドン）。
+ * 合成できる確信が持てない組み合わせ（後続がウォ等のw音、前語が母音終わり等）はnullを返し、
+ * 呼び出し側はカタカナヒント自体を付けない（誤ったカタカナを出さない方針）。
+ *
+ * @param flap trueならt脱落ではなくフラップとして、結合音をラ行にする（例: ガット + ア → ガラ）。
+ */
+function mergePairReading(reading1: string, reading2: string, flap: boolean): string | null {
+  const vowelIdx = VOWEL_KANA.indexOf(reading2[0]);
+  if (vowelIdx < 0) return null;
+  // 「ウォ」「ウィ」等は母音ではなくw音なので合成対象外
+  if (reading2.length > 1 && SMALL_KANA.includes(reading2[1])) return null;
+
+  const lastKana = reading1[reading1.length - 1];
+  const consonant = FINAL_KANA_CONSONANT[lastKana];
+  if (!consonant) return null;
+
+  const row = MERGE_ROWS[flap ? 'r' : consonant];
+  let stem = reading1.slice(0, -1);
+  // フラップ合成では促音を落とす（ガッ+ラ→ガラ。「ガッラ」は不自然なため）
+  if (flap && stem.endsWith('ッ')) stem = stem.slice(0, -1);
+  return stem + row[vowelIdx] + reading2.slice(1);
+}
+
+/** 語末破裂音の読み（ト/ド/ク/グ/プ/ブ）を落として後続語と連結する（例: ネクスト + デイ → ネクスデイ）。 */
+function elisionReading(reading1: string, reading2: string): string | null {
+  const lastKana = reading1[reading1.length - 1];
+  if (!'トドクグプブ'.includes(lastKana)) return null;
+  return reading1.slice(0, -1) + reading2;
+}
+
+/** 表示用: 前後の約物だけ除去し、大文字小文字は原文のまま残す。 */
+function displayWord(word: string): string {
+  const cleaned = word.replace(/^[^A-Za-z']+/, '').replace(/[^A-Za-z']+$/, '');
+  return cleaned.length > 0 ? cleaned : word;
+}
+
+function displayWords(issue: PhenomenonIssue): string {
+  return issue.words.map(displayWord).join(' ');
+}
+
+/**
+ * カタカナヒント（DESIGN.md §8 5b M8: 辞書に検出語（ペアは両方）が載っている場合のみ合成して付ける）。
+ * 辞書に無い語・合成の確信が持てない組み合わせは空文字列（=文字ベース説明のみ）。
+ */
+function phenomenonKatakanaSuffix(issue: PhenomenonIssue): string {
+  const words = issue.words.map(stripPunct);
   switch (issue.type) {
-    case 'linking':
-      return `${words} の連結（例: turned on→「ターンドン」のように、前の語の子音と次の語の母音がつながって1語のように聞こえます）が言えていません。`;
-    case 'flap':
-      return `${words} のt（例: water→「ワラ」のように、軽い「ラ」行の音になります）が抜けています。`;
-    case 'elision':
-      return `${words} の脱落（例: next day→「ネクスデイ」のように、前の語の最後の子音がほとんど聞こえなくなります）が抜けています。`;
-    case 'weak':
-      return `${words} の弱形（機能語は力を抜いて弱く速く発音されるため聞き取りにくくなります）が抜けています。`;
+    case 'linking': {
+      if (words.length < 2) return '';
+      const r1 = KATAKANA_DICT[words[0]];
+      const r2 = KATAKANA_DICT[words[1]];
+      if (!r1 || !r2) return '';
+      const merged = mergePairReading(r1, r2, false);
+      return merged ? `（「${merged}」のような音です）` : '';
+    }
+    case 'flap': {
+      if (words.length === 1) {
+        const flapReading = FLAP_READINGS[words[0]];
+        return flapReading ? `（「${flapReading}」のような音です）` : '';
+      }
+      const r1 = KATAKANA_DICT[words[0]];
+      const r2 = KATAKANA_DICT[words[1]];
+      if (!r1 || !r2) return '';
+      const merged = mergePairReading(r1, r2, true);
+      return merged ? `（「${merged}」のような音です）` : '';
+    }
+    case 'elision': {
+      if (words.length < 2) return '';
+      const r1 = KATAKANA_DICT[words[0]];
+      const r2 = KATAKANA_DICT[words[1]];
+      if (!r1 || !r2) return '';
+      const merged = elisionReading(r1, r2);
+      return merged ? `（「${merged}」のような音です）` : '';
+    }
+    case 'weak': {
+      const reading = KATAKANA_DICT[words[0]];
+      return reading ? `（弱く短い「${reading}」のような音です）` : '';
+    }
     case 'ending':
-      return `${words} の語尾-s/-ed（例: wanted→「ワニッ(ト)」寄りに、語尾が弱くほとんど聞こえなくなります）が抜けています。`;
+      // 語尾指摘の対象は活用形（wanted等）で辞書に無く、弱化した語尾の読み合成は誤りやすいため付けない
+      return '';
   }
+}
+
+/** 現象の説明を、検出された実際の語の綴りから取り出した文字で組み立てる（DESIGN.md §8 5b M8）。 */
+function phenomenonCoreClause(issue: PhenomenonIssue): string {
+  const disp = displayWords(issue);
+  const words = issue.words.map(stripPunct);
+  switch (issue.type) {
+    case 'linking': {
+      const c1 = words[0].slice(-1);
+      const c2 = words[1]?.slice(0, 1) ?? '';
+      return `${disp} は ${c1} と ${c2} がつながって1語のように聞こえます`;
+    }
+    case 'flap':
+      return words.length === 1
+        ? `${disp} の t が弱いラ行のような音になります`
+        : `${disp} は t が弱いラ行のような音になってつながります`;
+    case 'elision': {
+      const c1 = words[0].slice(-1);
+      return `${disp} は ${c1} の音がほとんど落ちます`;
+    }
+    case 'weak':
+      return `${disp} は弱く速く発音されます`;
+    case 'ending': {
+      const suffix = words[0].endsWith('d') ? '-ed' : '-s';
+      return `${disp} の語尾 ${suffix} が弱くなります`;
+    }
+  }
+}
+
+/** 同typeにまとめた指摘グループを1つのDevelopment Point文言にする（最大2ペアまで列挙）。 */
+function buildPhenomenonDevPoint(type: PhenomenonType, group: PhenomenonIssue[]): string {
+  const names = group
+    .slice(0, 2)
+    .map((issue) => `「${displayWords(issue)}」`)
+    .join('');
+  const lead =
+    group.length >= 2
+      ? `${names}のような${PHENOMENON_LABEL[type]}が言えていませんでした。`
+      : `${names}の${PHENOMENON_LABEL[type]}が言えていませんでした。`;
+  const first = group[0];
+  return `${lead}${phenomenonCoreClause(first)}${phenomenonKatakanaSuffix(first)}。`;
+}
+
+/** 同一文言の重複を除去する（DESIGN.md §8 5b M8: 同じ提出内で同一文言を繰り返さない）。 */
+function dedupe(candidates: string[]): string[] {
+  return [...new Set(candidates)];
 }
 
 /**
@@ -248,8 +436,15 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
 
   // 音声現象ベースの指摘（DESIGN.md §8 5b）を一般指摘より優先する。3件に満たない場合のみ
   // 以降の一般指摘（missed集中文など）で補う。
+  // M8: 同typeの指摘は1つの文言にまとめ、実語ペアを最大2つ列挙する（固定例文は使わない）。
+  const issuesByType = new Map<PhenomenonType, PhenomenonIssue[]>();
   for (const issue of topIssues) {
-    devCandidates.push(phenomenonHint(issue));
+    const group = issuesByType.get(issue.type) ?? [];
+    group.push(issue);
+    issuesByType.set(issue.type, group);
+  }
+  for (const [type, group] of issuesByType) {
+    devCandidates.push(buildPhenomenonDevPoint(type, group));
   }
 
   const worstSentence = findWorstSentence(wordMarks, sentences);
@@ -293,8 +488,9 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
     );
   }
 
-  const goodPoints = fillToCount(goodCandidates, GOOD_POINTS_COUNT, GENERIC_GOOD_FALLBACKS, matchRatePercent);
-  const devPoints = fillToCount(devCandidates, DEV_POINTS_COUNT, GENERIC_DEV_FALLBACKS, matchRatePercent);
+  // M8: 同じ提出内で同一文言が重複しないよう、候補段階で完全一致の重複を除去する。
+  const goodPoints = fillToCount(dedupe(goodCandidates), GOOD_POINTS_COUNT, GENERIC_GOOD_FALLBACKS, matchRatePercent);
+  const devPoints = fillToCount(dedupe(devCandidates), DEV_POINTS_COUNT, GENERIC_DEV_FALLBACKS, matchRatePercent);
 
   return { goodPoints, devPoints, issues: topIssues };
 }

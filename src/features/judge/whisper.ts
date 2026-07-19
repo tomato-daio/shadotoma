@@ -2,7 +2,8 @@
  * transformers.js（@huggingface/transformers）を用いたWhisper文字起こしのクライアント側ラッパー
  * （DESIGN.md §8手順2）。
  *
- * - モデル: `onnx-community/whisper-tiny.en`（量子化版）
+ * - モデル: 呼び出しごとにモデルIDを受け取る（M8: 設定ページで base.en / tiny.en を切替。
+ *   選択の解決は whisperModels.ts が担い、ここでは受け取ったIDをワーカーへ渡すだけ）
  * - デバイス: 常にWASM。dtype: 'q4' 固定（理由は下記コメント参照）
  * - モデルは初回ダウンロード後、transformers.jsが内部でCache APIへキャッシュするため、
  *   2回目以降はネットワークアクセスなしで読み込める
@@ -19,8 +20,6 @@
  */
 
 import type { WhisperProgressEvent, WhisperWorkerRequest, WhisperWorkerResponse } from './whisper.protocol';
-
-export const WHISPER_MODEL_ID = 'onnx-community/whisper-tiny.en';
 
 export type { WhisperProgressPhase, WhisperProgressEvent } from './whisper.protocol';
 export type WhisperProgressCallback = (event: WhisperProgressEvent) => void;
@@ -88,14 +87,21 @@ function getWorker(): Worker {
  * 16kHzモノラルのFloat32Array音声をWhisperで文字起こしする。
  * 実処理はワーカーに委譲され、完了・進捗はpostMessage経由で受け取る。
  * pcmはtransferable（ArrayBuffer所有権譲渡）で渡すため、呼び出し後にpcmを再利用しないこと。
+ *
+ * @param modelId 使用するWhisperモデルID（whisperModels.tsで解決したもの。M8: 設定で切替可能）。
+ *   前回と異なるIDを渡すとワーカー内でパイプラインが再構築される。
  */
-export function transcribeAudio(pcm: Float32Array, onProgress?: WhisperProgressCallback): Promise<string> {
+export function transcribeAudio(
+  pcm: Float32Array,
+  modelId: string,
+  onProgress?: WhisperProgressCallback,
+): Promise<string> {
   const w = getWorker();
   const id = ++requestSeq;
 
   return new Promise<string>((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress });
-    const message: WhisperWorkerRequest = { type: 'transcribe', id, pcm };
+    const message: WhisperWorkerRequest = { type: 'transcribe', id, pcm, modelId };
     try {
       w.postMessage(message, [pcm.buffer]);
     } catch (err) {

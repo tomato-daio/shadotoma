@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { WordMark } from '../../lib/align';
 import type { JudgeResult } from '../../lib/db';
 import type { PhenomenonType, PreviousIssueOutcome } from '../../lib/phenomena';
@@ -6,15 +7,20 @@ export interface JudgeResultViewProps {
   judge: JudgeResult;
   /** 前回提出のmatchRate。指定時は前回比を表示する。 */
   previousMatchRate?: number;
+  /**
+   * Whisperが聴き取った発話の書き起こし（Submission.transcript。M8）。
+   * 指定時のみ「あなたの発話」折りたたみセクションを表示する（transcriptの無い古い提出では非表示）。
+   */
+  transcript?: string;
   className?: string;
 }
 
 /**
  * 判定結果画面（DESIGN.md §8手順7）。
- * 色分けスクリプト（ok=緑/missed=赤/sub=黄）、matchRate・WPM、Good/Development Points、
- * 前回提出との比較を表示する。
+ * 色分けスクリプト（ok=緑/missed=赤/sub=黄。subは聞こえた語も併記）、matchRate・WPM、
+ * Good/Development Points、あなたの発話（書き起こし）、前回提出との比較を表示する。
  */
-export function JudgeResultView({ judge, previousMatchRate, className = '' }: JudgeResultViewProps) {
+export function JudgeResultView({ judge, previousMatchRate, transcript, className = '' }: JudgeResultViewProps) {
   const matchRatePercent = Math.round(judge.matchRate * 100);
   const deltaPercent =
     previousMatchRate !== undefined ? Math.round((judge.matchRate - previousMatchRate) * 100) : null;
@@ -46,6 +52,8 @@ export function JudgeResultView({ judge, previousMatchRate, className = '' }: Ju
 
       <PointsList title="Good Points" points={judge.goodPoints} tone="good" />
       <PointsList title="Development Points" points={judge.devPoints} tone="dev" />
+
+      <TranscriptSection transcript={transcript} />
 
       <PreviousIssuesSection outcomes={judge.previousIssueOutcomes} />
     </div>
@@ -85,6 +93,35 @@ function PreviousIssuesSection({ outcomes }: { outcomes?: PreviousIssueOutcome[]
   );
 }
 
+/**
+ * 「あなたの発話（AIが聴き取った内容）」の折りたたみ表示（M8）。
+ * 初期状態は閉じており、タップで展開する。transcriptが無い（添削なし提出・古いデータ）場合は
+ * セクションごと表示しない。
+ */
+function TranscriptSection({ transcript }: { transcript?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!transcript || transcript.trim().length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-neutral-200 bg-neutral-50/60">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-2 p-3 text-left"
+      >
+        <span className="text-sm font-semibold text-neutral-700">あなたの発話（AIが聴き取った内容）</span>
+        <span className="text-xs text-neutral-400">{expanded ? '▲ 閉じる' : '▼ 表示'}</span>
+      </button>
+      {expanded ? (
+        <p className="max-h-40 overflow-y-auto border-t border-neutral-100 p-3 text-sm leading-relaxed text-neutral-600">
+          {transcript}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-neutral-200 p-3 text-center">
@@ -118,8 +155,12 @@ function ColoredScript({ wordMarks }: { wordMarks: WordMark[] }) {
       {[...bySentence.entries()].map(([si, marks]) => (
         <p key={si} className="mb-1">
           {marks.map((m, i) => (
-            <span key={i} className={STATUS_CLASS[m.status]}>
-              {m.word}{' '}
+            <span key={i}>
+              <span className={STATUS_CLASS[m.status]}>{m.word}</span>
+              {m.status === 'sub' && m.recognized ? (
+                // 置換語（黄）には実際に聴き取られた語を添える（M8。recognizedはM7で保存済み）
+                <span className="text-[10px] font-normal text-amber-500">(→ {m.recognized})</span>
+              ) : null}{' '}
             </span>
           ))}
         </p>

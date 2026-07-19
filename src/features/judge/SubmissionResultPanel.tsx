@@ -10,6 +10,8 @@ export interface SubmissionResultPanelProps {
   error: string | null;
   judge: JudgeResult | null;
   previousMatchRate?: number;
+  /** Whisperが聴き取った書き起こし（M8: JudgeResultViewの「あなたの発話」表示に渡す）。 */
+  transcript?: string;
   onCopyFallback: () => void;
   fallbackCopied: boolean;
   className?: string;
@@ -30,6 +32,7 @@ export function SubmissionResultPanel({
   error,
   judge,
   previousMatchRate,
+  transcript,
   onCopyFallback,
   fallbackCopied,
   className = '',
@@ -74,7 +77,14 @@ export function SubmissionResultPanel({
   }
 
   if (status === 'done' && judge) {
-    return <JudgeResultView judge={judge} previousMatchRate={previousMatchRate} className={className} />;
+    return (
+      <JudgeResultView
+        judge={judge}
+        previousMatchRate={previousMatchRate}
+        transcript={transcript}
+        className={className}
+      />
+    );
   }
 
   return null;
