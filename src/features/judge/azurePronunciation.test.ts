@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   AzurePronunciationAuthError,
   AzurePronunciationNetworkError,
@@ -6,6 +6,7 @@ import {
   AzurePronunciationTimeoutError,
   aggregatePhraseAssessments,
   describeAzureError,
+  resolveRecognitionOutcome,
   toPhraseAssessment,
   truncateDetail,
   worstWords,
@@ -217,6 +218,45 @@ describe('describeAzureError', () => {
     const err = new AzurePronunciationNetworkError(longDetail);
     expect(err.message).toContain('…');
     expect(err.message.length).toBeLessThan(200);
+  });
+});
+
+describe('resolveRecognitionOutcome', () => {
+  // iOS Safari(WebKit)のSDK後片付けバグで実際に観測されたエラー文言。
+  const teardownError = new Error(
+    "undefined is not an object (evaluating 'this.privSource.turnOff().then')",
+  );
+
+  it('フレーズ1件以上・エラーなしなら、そのままフレーズを返す', () => {
+    const phrases = [makePhrase()];
+    expect(resolveRecognitionOutcome(phrases, null)).toBe(phrases);
+  });
+
+  it('フレーズ1件以上なら、後片付け例外が記録されていても成功として返す（M10追補: iOS Safari対策）', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const phrases = [makePhrase({ pronScore: 88 })];
+      const result = resolveRecognitionOutcome(phrases, teardownError);
+      expect(result).toBe(phrases);
+      // 無視したエラーはconsole.warnに残す
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn.mock.calls[0][1]).toBe(teardownError);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('フレーズ0件・エラーありなら、そのエラーを投げる（別原因の切り分け用）', () => {
+    expect(() => resolveRecognitionOutcome([], teardownError)).toThrow(teardownError);
+  });
+
+  it('フレーズ0件・エラーありのとき、Azure固有エラー型もそのまま投げる', () => {
+    const authError = new AzurePronunciationAuthError();
+    expect(() => resolveRecognitionOutcome([], authError)).toThrow(authError);
+  });
+
+  it('フレーズ0件・エラーなしなら空配列を返す（呼び出し側が結果ゼロとして扱う）', () => {
+    expect(resolveRecognitionOutcome([], null)).toEqual([]);
   });
 });
 

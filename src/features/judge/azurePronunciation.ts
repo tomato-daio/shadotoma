@@ -8,7 +8,15 @@
  * 静的importするとAzureキー未設定のユーザーが開く判定結果画面のバンドルにも常に含まれて
  * しまうため、実際にキーが設定され採点が実行されるときだけ読み込む（バンドル分割）。
  * このファイルの純関数群（toPhraseAssessment/aggregatePhraseAssessments/worstWords/
- * describeAzureError/truncateDetail）はSDKに依存しないため、SDK無しでVitestテストできる。
+ * describeAzureError/truncateDetail/resolveRecognitionOutcome）はSDKに依存しないため、
+ * SDK無しでVitestテストできる。
+ *
+ * iOS Safari(WebKit)の後片付けバグ対策（M10追補）: SDKには、認識終了時の後片付け
+ * （stopContinuousRecognitionAsync/close周辺のprivSource.turnOff）で
+ * 「undefined is not an object (evaluating 'this.privSource.turnOff().then')」という内部例外が
+ * 出る既知のバグがある（iPhone実機で確認）。このとき認識結果自体は取得済みのことが多いため、
+ * 後片付けの失敗は採点の成否に影響させず（console.warnに全文を残すのみ）、成否は
+ * 「フレーズ結果を1件以上収集できたか」で判定する（resolveRecognitionOutcome）。
  *
  * プロソディ・フォールバック（DESIGN.md §8c M10）: 韻律（プロソディ）採点はリージョンにより
  * 未対応の場合があり（東日本で失敗報告あり）、その場合は韻律有効でのcontinuous recognitionが
@@ -178,6 +186,47 @@ const RECOGNITION_TIMEOUT_MS = 120_000;
 type AzureSpeechSDK = typeof import('microsoft-cognitiveservices-speech-sdk');
 
 /**
+ * SDKの後片付け（stop/close）呼び出しの同期例外を握りつぶす（M10追補: iOS Safari対策）。
+ * WebKitではSDK内部の既知バグ（privSource.turnOff周辺）により後片付けで例外が出ることがあるが、
+ * その時点で認識結果は取得済みのことが多い。後片付けの成否は採点の成否に影響させず、
+ * console.warnに全文を残すだけにする（ファイル冒頭コメント参照）。
+ */
+function swallowTeardownError(label: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (err) {
+    console.warn(
+      `[azurePronunciation] ${label}で例外が発生しました（後片付けの失敗は採点の成否に影響させません）。`,
+      err,
+    );
+  }
+}
+
+/**
+ * 認識セッション終了後の成否判定（M10追補: iOS Safari後片付けバグ対策の純関数）。
+ * 成否は「フレーズ結果を1件以上収集できたか」で決める:
+ * - 1件以上: 認識中・後片付けでエラーが発生していても成功として返す（エラーはconsole.warnに残す）
+ * - 0件でエラーあり: そのエラーを投げる（後片付けバグ以外の別原因の切り分けに使う）
+ * - 0件でエラーなし: 空配列を返す（呼び出し側が「結果ゼロ」として扱う）
+ */
+export function resolveRecognitionOutcome(
+  phrases: PhraseAssessment[],
+  recognitionError: Error | null,
+): PhraseAssessment[] {
+  if (phrases.length > 0) {
+    if (recognitionError) {
+      console.warn(
+        '[azurePronunciation] 認識中にエラーが発生しましたが、フレーズ結果を取得済みのため成功として扱います。',
+        recognitionError,
+      );
+    }
+    return phrases;
+  }
+  if (recognitionError) throw recognitionError;
+  return phrases;
+}
+
+/**
  * 1回ぶんのcontinuous recognitionを実行し、フレーズ結果配列を返す内部ヘルパー。
  * プロソディ・フォールバック（DESIGN.md §8c M10）のため、runAzurePronunciationAssessmentから
  * enableProsodyを切り替えて最大2回（韻律あり→失敗時のみ韻律なしで1回）呼ばれる。
@@ -188,8 +237,12 @@ type AzureSpeechSDK = typeof import('microsoft-cognitiveservices-speech-sdk');
  *    enableProsodyAssessment）を適用したSpeechRecognizerでcontinuous recognitionを実行し、
  *    60秒超の音声でも最後まで処理する
  *
- * cancellation/エラー/タイムアウト時は AzurePronunciation*Error（またはSDK詳細を含むError）を
- * 投げる。結果0件（無音等）でも例外は投げず空配列を返す（呼び出し側が「結果ゼロ」として扱う）。
+ * 成否判定（M10追補・resolveRecognitionOutcome参照）: 認識中のエラーはrejectせず記録だけして
+ * Promiseは常にresolveし、フレーズ結果を1件以上収集できていれば（後片付け例外が出ても）
+ * 成功として返す。0件かつエラーありの場合のみそのエラーを投げる。0件かつエラーなし（無音等）は
+ * 空配列を返す（呼び出し側が「結果ゼロ」として扱う）。
+ * stopContinuousRecognitionAsync/closeの失敗はconsole.warnに残すだけで握りつぶす
+ * （iOS SafariのprivSource.turnOff既知バグ対策。ファイル冒頭コメント参照）。
  */
 async function recognizeOnce(
   SpeechSDK: AzureSpeechSDK,
@@ -219,25 +272,43 @@ async function recognizeOnce(
   pronunciationConfig.applyTo(recognizer);
 
   const phrases: PhraseAssessment[] = [];
+  /**
+   * 認識中に発生した最初のエラー（cancellation・開始失敗・タイムアウト・後片付け例外の伝播等）。
+   * フレーズを1件も収集できなかった場合のみ、失敗としてresolveRecognitionOutcomeが投げる。
+   */
+  let recognitionError: Error | null = null;
 
   try {
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<void>((resolve) => {
       let settled = false;
-      const timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        recognizer.stopContinuousRecognitionAsync(
-          () => reject(new AzurePronunciationTimeoutError()),
-          () => reject(new AzurePronunciationTimeoutError()),
-        );
-      }, RECOGNITION_TIMEOUT_MS);
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-      const finish = (fn: () => void) => {
+      /**
+       * 二重解決防止のガード（M10追補）: タイムアウト・canceled・sessionStopped・
+       * stopのエラーコールバック・同期例外がどの順序・組み合わせで発生しても、
+       * 最初の1回だけがこのPromiseを解決する。エラーはrejectせずrecognitionErrorへ
+       * 記録して常にresolveし、成否はフレーズ収集数ベースで後段が判定する。
+       */
+      const finish = (err?: Error) => {
         if (settled) return;
         settled = true;
-        clearTimeout(timeoutId);
-        fn();
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        if (err && !recognitionError) recognitionError = err;
+        resolve();
       };
+
+      timeoutId = setTimeout(() => {
+        // タイムアウト時も停止は試みるが、stop自体の失敗（iOS Safariの既知バグ等）は握りつぶし、
+        // 停止の完了を待たずにタイムアウトとして確定する。
+        swallowTeardownError('stopContinuousRecognitionAsync（タイムアウト時）', () => {
+          recognizer.stopContinuousRecognitionAsync(
+            () => {},
+            (err) =>
+              console.warn('[azurePronunciation] タイムアウト時の停止呼び出しがエラーを返しました。', err),
+          );
+        });
+        finish(new AzurePronunciationTimeoutError());
+      }, RECOGNITION_TIMEOUT_MS);
 
       recognizer.recognized = (_sender, e) => {
         if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
@@ -254,46 +325,61 @@ async function recognizeOnce(
           // EndOfStream（正常終了）はここでは何もしない。後続のsessionStoppedで解決する。
           return;
         }
-        finish(() => {
-          if (e.errorCode === SpeechSDK.CancellationErrorCode.AuthenticationFailure) {
-            reject(new AzurePronunciationAuthError());
-          } else if (
-            e.errorCode === SpeechSDK.CancellationErrorCode.ConnectionFailure ||
-            e.errorCode === SpeechSDK.CancellationErrorCode.ServiceTimeout
-          ) {
-            reject(new AzurePronunciationNetworkError(e.errorDetails));
-          } else {
-            // 韻律採点未対応リージョン等での失敗は多くの場合ここに来る（BadRequest等）。
-            // e.errorDetailsをそのままError.messageに持たせ、呼び出し側のdescribeAzureErrorで
-            // 判定結果画面向けに切り詰める（console.errorには全文を出す。DESIGN.md §8c M10）。
-            reject(new Error(e.errorDetails || 'Azure Speechでキャンセルされました。'));
-          }
-        });
+        if (e.errorCode === SpeechSDK.CancellationErrorCode.AuthenticationFailure) {
+          finish(new AzurePronunciationAuthError());
+        } else if (
+          e.errorCode === SpeechSDK.CancellationErrorCode.ConnectionFailure ||
+          e.errorCode === SpeechSDK.CancellationErrorCode.ServiceTimeout
+        ) {
+          finish(new AzurePronunciationNetworkError(e.errorDetails));
+        } else {
+          // 韻律採点未対応リージョン等での失敗は多くの場合ここに来る（BadRequest等）。
+          // e.errorDetailsをそのままError.messageに持たせ、呼び出し側のdescribeAzureErrorで
+          // 判定結果画面向けに切り詰める（console.errorには全文を出す。DESIGN.md §8c M10）。
+          finish(new Error(e.errorDetails || 'Azure Speechでキャンセルされました。'));
+        }
       };
 
       recognizer.sessionStopped = () => {
-        finish(() => {
+        // 認識セッションは終了済みで、フレーズ結果は収集済み。ここからは後片付けのみのため、
+        // stopの同期例外・エラーコールバック（iOS SafariのprivSource.turnOff既知バグが出る箇所）
+        // はどちらもエラー扱いにせず、warnを残してresolveする（成否はフレーズ収集数で判定）。
+        try {
           recognizer.stopContinuousRecognitionAsync(
-            () => resolve(),
-            (err) => reject(new Error(err)),
+            () => finish(),
+            (err) => {
+              console.warn(
+                '[azurePronunciation] stopContinuousRecognitionAsyncがエラーを返しました（後片付けの失敗は採点の成否に影響させません）。',
+                err,
+              );
+              finish();
+            },
           );
-        });
+        } catch (err) {
+          console.warn(
+            '[azurePronunciation] stopContinuousRecognitionAsyncの呼び出しで例外が発生しました（後片付けの失敗は採点の成否に影響させません）。',
+            err,
+          );
+          finish();
+        }
       };
 
       recognizer.startContinuousRecognitionAsync(
         () => {
           // 開始成功時は何もしない（結果はrecognized/canceled/sessionStoppedイベントで受け取る）。
         },
-        (err) => finish(() => reject(new AzurePronunciationNetworkError(err))),
+        (err) => finish(new AzurePronunciationNetworkError(err)),
       );
     });
   } finally {
-    recognizer.close();
-    audioConfig.close();
-    speechConfig.close();
+    // close群の同期例外（iOS SafariのprivSource.turnOff内部バグ等）も採点の成否に影響させない。
+    swallowTeardownError('recognizer.close', () => recognizer.close());
+    swallowTeardownError('audioConfig.close', () => audioConfig.close());
+    swallowTeardownError('speechConfig.close', () => speechConfig.close());
   }
 
-  return phrases;
+  // フレーズ1件以上なら（エラーが記録されていても）成功。0件かつエラーありなら投げる。
+  return resolveRecognitionOutcome(phrases, recognitionError);
 }
 
 /**
