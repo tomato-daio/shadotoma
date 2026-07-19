@@ -48,7 +48,7 @@ interface Material {
   category: string;           // 例 "As It Is", "Local"
   audioUrl?: string;          // bundled: base相対 "materials/audio/xxx.mp3"（セクションごとに独立したmp3）
   audioBlob?: Blob;           // local のみ
-  sentences: { en: string; ja?: string }[];  // このセクションに割り当てられた文
+  sentences: { en: string; ja?: string; vocab?: { term: string; ja: string }[] }[];  // このセクションの文（ja/vocabはM14のクリップボード往復取り込みで後付け）
   durationSec?: number;
   wordCount: number;
   addedAt: number;            // epoch ms
@@ -122,8 +122,8 @@ interface MaterialProgress {
 - 再生/停止、シークバー、現在時間/総時間
 - 速度: 0.5〜2.0を0.05刻み（UIはプリセット 0.7/0.85/1.0/1.15 + スライダー）、preservesPitch必須
 - 3秒巻き戻しボタン
-- ABリピート: 「A設定」「B設定」「解除」。timeupdateで currentTime>B なら A へ戻す（timeupdate粒度が粗いため ±0.25s 許容でよい）
-- ループ再生: ended時に自動で先頭から再再生し、ループ回数をコールバック通知
+- ABリピート: 「A設定」「B設定」「解除」。timeupdateで currentTime>B なら A へ戻す（timeupdate粒度が粗いため ±0.25s 許容でよい）。**A≧B・0.5s未満の退化区間はAB無効扱い**（M14: timeupdate毎にAへ戻り続けるライブロック防止）
+- ループ再生: ended時に自動で先頭から再再生し、ループ回数をコールバック通知。**再開位置は検証する**（M14: A地点が末尾から0.5s未満なら0秒へフォールバック。加えて直前の自動再開から0.5s未満のendedでは再生を再開しない。A地点末尾での「ended→即ended」暴走でカウントが一瞬で数十〜100に達したバグの対策）
 - スクリプト表示/非表示トグル（ステップに応じた初期値、手動切替可）
 
 ## 6. 録音・聴き比べ仕様（M1）
@@ -241,6 +241,21 @@ interface MaterialProgress {
 - **見える化**: 進捗タブに「苦手分析」セクション＝苦手音トップ3（M12辞書のコツ文を再利用）・苦手現象・繰り返し間違う単語トップ5・克服バッジ
 - **推薦** `recommendMaterials(profile, materials, progresses)`（純関数・テスト必須）: スコア＝苦手音素の出現密度（phonemeCounts）＋苦手現象の練習機会数（phenomena検出器を教材文に適用して都度計算）＋苦手単語の出現＋レベル適正（直近平均一致率<60%なら低レベル優先・>85%なら上へ）。対象はdone以外のbundledセクション。今日タブ「あなたへのおすすめ」カードに上位2件を**推薦理由つき**で表示。プロファイルが薄い間（提出数不足）はレベル順の未着手教材にフォールバック（コールドスタート）
 - **将来拡張（未実装・記録のみ）**: 苦手音・苦手単語を狙ったカスタム教材のTTS生成（OpenAI TTS等・1教材数円・要APIキー）。推薦が機能した後の次段階
+
+## 8e. 訳・語彙とスクリプト添削オーバーレイ（M14）
+
+練習画面のスクリプト表示を共有コンポーネント `src/components/ScriptView.tsx` に統合し（PlayerUI/RecorderUIから利用）、2つのオーバーレイを載せる。どちらもトグルチップで表示/非表示（初期は表示）。
+
+**a. 日本語訳・重要語彙（クリップボード往復方式）**
+- LLM APIは使わない。`src/lib/scriptAnnotations.ts` が番号付き文一覧+JSON出力形式を指定した依頼プロンプトを組み立て、練習画面下部の `TranslationImportPanel` からコピー → ユーザーがChatGPT/Claude等に貼る → 返答JSONを貼り戻す → パース・検証して `Sentence.ja`/`Sentence.vocab` へ保存（外部送信なし。clipboardFallback.tsと同方式）
+- パースはコードフェンス・前後の説明文に耐性を持たせる（全体parse失敗時は最初の`{`〜最後の`}`で再試行）。不正JSONと文数不一致は別メッセージでエラー表示
+- **バンドル教材の起動時同期（§7のsyncBundledMaterials）は丸ごと上書きのため、同一indexでenが一致する文のja/vocabを既存レコードから引き継ぐ**（`mergeSentenceAnnotations`）。enが変わった文（再分割等）は破棄
+
+**b. 前回結果ハイライト+コメントカード（シャドテン風）**
+- `usePracticeWizard` がマウント時に取得済みの直近judged提出から `previousJudge` を渡し、`src/lib/scriptFeedback.ts` が文ごとの表示データを組み立てる
+- できなかった語（wordMarksのmissed/sub、issuesの対象語）=ピンク地、improved=trueの前回指摘の語=青緑地。該当文の直下に「🔥 Development」（issues）/「✓ Good」（improved）カード
+- `PreviousIssueOutcome` はsiを持たないため、対象語が全てokで存在する文を逆引きする（comparePreviousIssuesと同じヒューリスティック）
+- スクリプト総語数とwordMarks長が不一致（教材差し替え等）ならハイライトを諦めプレーン表示にフォールバック（phenomena.tsのpositionsReliableと同じ安全側）
 
 ## 9. ディレクトリ構成
 
