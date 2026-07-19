@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScriptView } from '../../components/ScriptView';
 import { formatTime } from '../../lib/audio';
-import type { Sentence } from '../../lib/db';
+import type { JudgeResult, Sentence } from '../../lib/db';
 import { RATE_PRESETS } from '../player/AudioPlayer';
 import { useRecorder } from './useRecorder';
 
@@ -11,12 +11,14 @@ export interface RecorderUIProps {
   /** このセクションのスクリプト（録音中のスクリプト表示切替用・DESIGN.md §6 M6）。 */
   sentences: Sentence[];
   onSubmit: (blob: Blob, mimeType: string) => Promise<void> | void;
+  /** この教材の直近の判定結果。指定時はスクリプトに前回のできた/できなかった箇所を重ねる。 */
+  previousJudge?: JudgeResult;
   className?: string;
 }
 
 type CompareTarget = 'own' | 'reference';
 
-export function RecorderUI({ referenceSrc, sentences, onSubmit, className = '' }: RecorderUIProps) {
+export function RecorderUI({ referenceSrc, sentences, onSubmit, previousJudge, className = '' }: RecorderUIProps) {
   const recorder = useRecorder(referenceSrc);
   const [compareTarget, setCompareTarget] = useState<CompareTarget>('own');
   const [submitting, setSubmitting] = useState(false);
@@ -82,7 +84,7 @@ export function RecorderUI({ referenceSrc, sentences, onSubmit, className = '' }
         >
           スクリプト{scriptVisible ? 'を隠す' : 'を表示'}
         </button>
-        {scriptVisible ? <ScriptView sentences={sentences} /> : null}
+        {scriptVisible ? <ScriptView sentences={sentences} previousJudge={previousJudge} /> : null}
       </div>
 
       {!recorder.recordedBlob ? (

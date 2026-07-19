@@ -6,6 +6,7 @@ import {
   markMaterialProgressDone,
   newId,
   touchMaterialProgress,
+  type JudgeResult,
   type MaterialProgress,
 } from '../../lib/db';
 import { learningDate } from '../../lib/dates';
@@ -45,6 +46,11 @@ export interface UsePracticeWizardResult {
   continueAnyway: () => void;
   /** 添削結果のmatchRateが判明した時点で呼び、早期提案の判定に反映する。 */
   applyLatestMatchRate: (matchRate: number) => void;
+  /**
+   * この教材の直近のjudge付き提出の判定結果（セッション開始時点で取得した固定値）。
+   * 練習画面のスクリプトに「前回できた/できなかった箇所」を重ねるために使う。提出が無ければundefined。
+   */
+  previousJudge: JudgeResult | undefined;
 }
 
 /**
@@ -63,6 +69,8 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
   // 現在時点でのmatchRate（今回の提出で更新されうる。完了後ゲートに使う）。
   const [latestMatchRate, setLatestMatchRate] = useState<number | undefined>(undefined);
   const [completing, setCompleting] = useState(false);
+  // 直近judged提出の判定結果（スクリプトへの前回結果ハイライト用）。
+  const [previousJudge, setPreviousJudge] = useState<JudgeResult | undefined>(undefined);
   // completeCurrentStepの多重実行防止用（stateの更新は非同期なため、同期的に判定できるrefを併用する）。
   const completingRef = useRef(false);
 
@@ -75,6 +83,7 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
     setForceContinue(false);
     setMountMatchRate(undefined);
     setLatestMatchRate(undefined);
+    setPreviousJudge(undefined);
     void Promise.all([getMaterialProgress(materialId), getSubmissionsByMaterial(materialId)]).then(
       ([p, submissions]) => {
         if (cancelled) return;
@@ -85,6 +94,7 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
         const rate = latestJudged?.judge?.matchRate;
         setMountMatchRate(rate);
         setLatestMatchRate(rate);
+        setPreviousJudge(latestJudged?.judge);
         setLoading(false);
       },
     );
@@ -176,5 +186,6 @@ export function usePracticeWizard(materialId: string | undefined): UsePracticeWi
     goToIndex,
     continueAnyway,
     applyLatestMatchRate,
+    previousJudge,
   };
 }

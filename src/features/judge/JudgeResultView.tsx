@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { WordMark } from '../../lib/align';
 import type { AzurePronunciationResult, AzureWordScore, JudgeResult } from '../../lib/db';
-import type { PhenomenonType, PreviousIssueOutcome } from '../../lib/phenomena';
+import { PHENOMENON_LABEL, type PreviousIssueOutcome } from '../../lib/phenomena';
 import { generateAzureComments } from './azureComments';
 import { worstWords } from './azurePronunciation';
 
@@ -67,14 +67,6 @@ export function JudgeResultView({ judge, previousMatchRate, transcript, classNam
     </div>
   );
 }
-
-const PHENOMENON_LABEL: Record<PhenomenonType, string> = {
-  linking: '連結',
-  flap: 'フラップ（tの軽い音）',
-  elision: '脱落',
-  weak: '弱形',
-  ending: '語尾(-s/-ed)',
-};
 
 /**
  * 「前回の指摘」欄（DESIGN.md §8 5b）。前回提出にissuesが無い（初回提出など）場合は欄ごと非表示にする。

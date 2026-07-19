@@ -11,6 +11,15 @@ import type { WordMark } from './align';
 
 export type PhenomenonType = 'linking' | 'flap' | 'elision' | 'weak' | 'ending';
 
+/** 現象名の日本語ラベル（判定結果画面・練習画面のコメントカードで共用）。 */
+export const PHENOMENON_LABEL: Record<PhenomenonType, string> = {
+  linking: '連結',
+  flap: 'フラップ（tの軽い音）',
+  elision: '脱落',
+  weak: '弱形',
+  ending: '語尾(-s/-ed)',
+};
+
 export interface PhenomenonIssue {
   type: PhenomenonType;
   /** 対象語（表示用の原文のまま）。ペアなら2語、単語単位の現象なら1語。 */

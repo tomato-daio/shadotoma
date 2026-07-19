@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScriptView } from '../../components/ScriptView';
 import { formatTime } from '../../lib/audio';
-import type { Sentence } from '../../lib/db';
+import type { JudgeResult, Sentence } from '../../lib/db';
 import { RATE_MAX, RATE_MIN, RATE_PRESETS, RATE_STEP } from './AudioPlayer';
 import { usePlayer } from './usePlayer';
 
@@ -14,6 +14,8 @@ export interface PlayerUIProps {
   loopTarget?: number | null;
   /** ループ完了回数が変化するたびに呼び出す（ウィザード側でステップ完了時の回数を記録するため）。 */
   onLoopCountChange?: (count: number) => void;
+  /** この教材の直近の判定結果。指定時はスクリプトに前回のできた/できなかった箇所を重ねる。 */
+  previousJudge?: JudgeResult;
   className?: string;
 }
 
@@ -23,6 +25,7 @@ export function PlayerUI({
   initialScriptVisible = true,
   loopTarget = null,
   onLoopCountChange,
+  previousJudge,
   className = '',
 }: PlayerUIProps) {
   const player = usePlayer(src);
@@ -52,7 +55,7 @@ export function PlayerUI({
       </div>
 
       {scriptVisible ? (
-        <ScriptView sentences={sentences} />
+        <ScriptView sentences={sentences} previousJudge={previousJudge} />
       ) : (
         <div className="rounded-lg bg-neutral-50 p-3 text-center text-sm text-neutral-400">
           スクリプト非表示中（音だけを頼りに聴いてみましょう）
