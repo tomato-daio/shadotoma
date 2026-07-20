@@ -65,9 +65,9 @@ describe('alignWords', () => {
     const result = alignWords(script, ['hello', 'world', 'today']);
 
     expect(result.wordMarks).toEqual([
-      { word: 'Hello', si: 0, status: 'ok' },
-      { word: 'world', si: 0, status: 'ok' },
-      { word: 'today.', si: 0, status: 'ok' },
+      { word: 'Hello', si: 0, status: 'ok', ri: 0 },
+      { word: 'world', si: 0, status: 'ok', ri: 1 },
+      { word: 'today.', si: 0, status: 'ok', ri: 2 },
     ]);
     expect(result.insertions).toEqual([]);
     expect(result.matchedCount).toBe(3);
@@ -88,9 +88,9 @@ describe('alignWords', () => {
     const result = alignWords(script, ['i', 'like', 'dogs']);
 
     expect(result.wordMarks).toEqual([
-      { word: 'I', si: 0, status: 'ok' },
-      { word: 'like', si: 0, status: 'ok' },
-      { word: 'cats', si: 0, status: 'sub', recognized: 'dogs' },
+      { word: 'I', si: 0, status: 'ok', ri: 0 },
+      { word: 'like', si: 0, status: 'ok', ri: 1 },
+      { word: 'cats', si: 0, status: 'sub', recognized: 'dogs', ri: 2 },
     ]);
     expect(result.insertions).toEqual([]);
   });
@@ -112,9 +112,9 @@ describe('alignWords', () => {
     const result = alignWords(script, ['i', 'am', 'very', 'happy']);
 
     expect(result.wordMarks).toEqual([
-      { word: 'I', si: 0, status: 'ok' },
-      { word: 'am', si: 0, status: 'ok' },
-      { word: 'happy', si: 0, status: 'ok' },
+      { word: 'I', si: 0, status: 'ok', ri: 0 },
+      { word: 'am', si: 0, status: 'ok', ri: 1 },
+      { word: 'happy', si: 0, status: 'ok', ri: 3 },
     ]);
     expect(result.insertions).toEqual(['very']);
     expect(result.matchedCount).toBe(3);

@@ -61,6 +61,8 @@ export interface WordMark {
   // status==='sub'のときに実際に認識された語（M7でalign.tsが設定済み。M8で判定結果画面の
   // 「(→ 聞こえた語)」表示に使う。既存データに無くてもoptionalのため後方互換）。
   recognized?: string;
+  // 対応した認識語のindex（ok/sub時のみ。M15でalign.tsが設定。旧データはundefined）。
+  ri?: number;
 }
 
 // ---- Azure発音評価（M9・任意機能・DESIGN.md §8c）----

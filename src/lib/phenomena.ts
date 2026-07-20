@@ -26,6 +26,12 @@ export interface PhenomenonIssue {
   words: string[];
   /** 文index（Material.sentencesのインデックス）。 */
   si: number;
+  /**
+   * お手本音声でこのペアが実際に連結して発音されていることを確認済みか
+   * （M15・linkingRealization.tsが付与）。true時はコメント文言を「お手本では繋げている」に強化する。
+   * 旧データ・お手本解析なしではundefined（後方互換）。
+   */
+  referenceLinked?: boolean;
 }
 
 export interface SentenceLike {
@@ -221,14 +227,19 @@ export function detectPhenomena(sentences: SentenceLike[], wordMarks: WordMark[]
 
 /**
  * 検出結果を優先度順（同一typeの多発 > 単発）に並べ替え、上位limit件へ絞る（DESIGN.md §8 5b）。
- * 同じtypeの出現数が多いほど優先し、同点内は検出順（Array.sortは安定ソート）を保つ。
+ * 同じtypeの出現数が多いほど優先し、同点内はお手本音声で連結が確認できたもの
+ * （referenceLinked・M15）を優先、それも同じなら検出順（Array.sortは安定ソート）を保つ。
  */
 export function prioritizeIssues(issues: PhenomenonIssue[], limit = 3): PhenomenonIssue[] {
   const countByType = new Map<PhenomenonType, number>();
   for (const issue of issues) {
     countByType.set(issue.type, (countByType.get(issue.type) ?? 0) + 1);
   }
-  const sorted = [...issues].sort((a, b) => (countByType.get(b.type) ?? 0) - (countByType.get(a.type) ?? 0));
+  const sorted = [...issues].sort((a, b) => {
+    const countDiff = (countByType.get(b.type) ?? 0) - (countByType.get(a.type) ?? 0);
+    if (countDiff !== 0) return countDiff;
+    return (b.referenceLinked ? 1 : 0) - (a.referenceLinked ? 1 : 0);
+  });
   return sorted.slice(0, limit);
 }
 

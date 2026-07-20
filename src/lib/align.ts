@@ -22,6 +22,12 @@ export interface WordMark {
    * status==='sub'以外では設定しない。
    */
   recognized?: string;
+  /**
+   * この語に対応した認識語のindex（認識語列上の位置。ok/subのときのみ設定・M15）。
+   * お手本transcriptをアラインした結果から単語タイムスタンプ（linkingRealization.ts）を
+   * 引くために使う。既存の保存データには無いためoptional（後方互換）。
+   */
+  ri?: number;
 }
 
 export interface ScriptWord {
@@ -179,6 +185,7 @@ export function alignWords(scriptWords: ScriptWord[], recognizedWords: string[])
           word: scriptWords[i - 1].word,
           si: scriptWords[i - 1].si,
           status: isMatch ? 'ok' : 'sub',
+          ri: j - 1,
         };
         if (!isMatch) mark.recognized = recognizedWords[j - 1];
         marksReversed.push(mark);
