@@ -27,6 +27,11 @@ export interface FeedbackCard {
    * 位置マッチ0件の旧データ等）はタップ手段が無いため、表示側で常時表示にフォールバックする。
    */
   anchored: boolean;
+  /**
+   * カードを差し込む位置（文内の語index。一致した語のうち最後の位置）。開いたカードは
+   * この語の直後に割り込み表示する（シャドテン風）。anchored=falseでは未設定。
+   */
+  anchorPosition?: number;
 }
 
 export interface FeedbackWord {
@@ -140,7 +145,11 @@ export function buildScriptFeedback(sentences: Sentence[], judge?: JudgeResult):
       indices.push(cardIndex);
       cardIndicesByPosition.set(key, indices);
     }
-    list.push({ kind, type, words, anchored: positions.length > 0 });
+    if (positions.length > 0) {
+      list.push({ kind, type, words, anchored: true, anchorPosition: Math.max(...positions) });
+    } else {
+      list.push({ kind, type, words, anchored: false });
+    }
     cardsBySentence.set(si, list);
   };
 
@@ -182,7 +191,10 @@ export function buildScriptFeedback(sentences: Sentence[], judge?: JudgeResult):
     }
     const cards = cardsBySentence.get(si) ?? [];
     // words=nullの文はアンカーの語が描画されないため、カードは常時表示へフォールバックする。
-    const normalizedCards = words === null ? cards.map((c) => (c.anchored ? { ...c, anchored: false } : c)) : cards;
+    const normalizedCards =
+      words === null
+        ? cards.map((c) => (c.anchored ? { kind: c.kind, type: c.type, words: c.words, anchored: false } : c))
+        : cards;
     return { words, cards: normalizedCards };
   });
 }

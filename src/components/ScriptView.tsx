@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { Fragment, memo, useMemo, useState } from 'react';
 import type { JudgeResult, Sentence } from '../lib/db';
 import { PHENOMENON_LABEL } from '../lib/phenomena';
 import { buildScriptFeedback, hasAnyFeedback, type FeedbackCard, type WordHighlight } from '../lib/scriptFeedback';
@@ -21,8 +21,9 @@ const HIGHLIGHT_CLASS: Record<WordHighlight, string> = {
  * - 各文の英文(en)と、あれば日本語訳(ja)・重要語彙(vocab)を表示する（トグルで隠せる・初期表示）。
  * - previousJudgeがあれば、前回の提出でできなかった語をピンク・改善した語を青緑でハイライトする
  *   （トグルで隠せる・初期表示）。Development / Good のコメントカードは初期状態では出さず、
- *   点線下線付きのハイライト語をタップしたときに該当文の直下へ開く（再タップ・カードタップで閉じる）。
- *   タップアンカーが無いカード（anchored=false）のみ常時表示にフォールバックする。
+ *   点線下線付きのハイライト語をタップしたときに**該当箇所の直後へ割り込み表示**する
+ *   （シャドテン風。再タップ・カードタップで閉じる）。タップアンカーが無いカード
+ *   （anchored=false）のみ文の下に常時表示するフォールバックを取る。
  *
  * memo化必須: RecorderUIは録音中レベルメーターのためほぼ60fpsで再レンダーされ、PlayerUIも
  * timeupdate毎に再レンダーされる。ハイライト時は単語単位のspanが数百要素になるため、
@@ -78,27 +79,56 @@ function ScriptViewImpl({ sentences, previousJudge, className = '' }: ScriptView
       ) : (
         sentences.map((s, i) => {
           const fb = showFeedback && feedbackAvailable ? feedback[i] : undefined;
+          // 開いているアンカー付きカードを、差し込み位置（語index）ごとにまとめる。
+          const openCardsAtPosition = new Map<number, { card: (typeof feedback)[number]['cards'][number]; ci: number }[]>();
+          if (fb) {
+            fb.cards.forEach((card, ci) => {
+              if (!card.anchored || card.anchorPosition === undefined) return;
+              if (!openCards.has(`${i}:${ci}`)) return;
+              const list = openCardsAtPosition.get(card.anchorPosition) ?? [];
+              list.push({ card, ci });
+              openCardsAtPosition.set(card.anchorPosition, list);
+            });
+          }
           return (
             <div key={i} className="mb-1.5">
               <p>
                 {fb?.words ? (
                   fb.words.map((w, k) => (
-                    <span key={k}>
-                      {w.cardIndices.length > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleCards(i, w.cardIndices)}
-                          aria-expanded={w.cardIndices.every((ci) => openCards.has(`${i}:${ci}`))}
-                          className={`${
-                            w.highlight ? HIGHLIGHT_CLASS[w.highlight] : 'text-neutral-800'
-                          } cursor-pointer touch-manipulation underline decoration-dotted decoration-1 underline-offset-2 [-webkit-tap-highlight-color:transparent]`}
+                    <Fragment key={k}>
+                      <span>
+                        {w.cardIndices.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleCards(i, w.cardIndices)}
+                            aria-expanded={w.cardIndices.every((ci) => openCards.has(`${i}:${ci}`))}
+                            className={`${
+                              w.highlight ? HIGHLIGHT_CLASS[w.highlight] : 'text-neutral-800'
+                            } cursor-pointer touch-manipulation underline decoration-dotted decoration-1 underline-offset-2 [-webkit-tap-highlight-color:transparent]`}
+                          >
+                            {w.text}
+                          </button>
+                        ) : (
+                          <span className={w.highlight ? HIGHLIGHT_CLASS[w.highlight] : 'text-neutral-800'}>
+                            {w.text}
+                          </span>
+                        )}{' '}
+                      </span>
+                      {/* 開いたカードはタップした該当箇所（アンカー語）の直後に割り込み表示する（シャドテン風） */}
+                      {openCardsAtPosition.get(k)?.map(({ card, ci }) => (
+                        <span
+                          key={`card-${ci}`}
+                          onClick={() => toggleCards(i, [ci])}
+                          className={`my-1 block cursor-pointer rounded-md border px-2 py-1.5 text-xs ${
+                            card.kind === 'dev'
+                              ? 'border-rose-200 bg-rose-50 text-rose-700'
+                              : 'border-teal-200 bg-teal-50 text-teal-700'
+                          }`}
                         >
-                          {w.text}
-                        </button>
-                      ) : (
-                        <span className={w.highlight ? HIGHLIGHT_CLASS[w.highlight] : 'text-neutral-800'}>{w.text}</span>
-                      )}{' '}
-                    </span>
+                          <CardText card={card} />
+                        </span>
+                      ))}
+                    </Fragment>
                   ))
                 ) : (
                   <span className="text-neutral-800">{s.en}</span>
@@ -114,23 +144,21 @@ function ScriptViewImpl({ sentences, previousJudge, className = '' }: ScriptView
                   ))}
                 </p>
               ) : null}
-              {fb?.cards.map((card, ci) => {
-                const key = `${i}:${ci}`;
-                if (card.anchored && !openCards.has(key)) return null;
-                return (
+              {/* アンカーを持たないカード（語数不一致フォールバック・旧データ）だけは従来どおり文の下に常時表示 */}
+              {fb?.cards.map((card, ci) =>
+                card.anchored ? null : (
                   <p
-                    key={key}
-                    onClick={card.anchored ? () => toggleCards(i, [ci]) : undefined}
+                    key={`${i}:${ci}`}
                     className={`mt-1 rounded-md border px-2 py-1.5 text-xs ${
                       card.kind === 'dev'
                         ? 'border-rose-200 bg-rose-50 text-rose-700'
                         : 'border-teal-200 bg-teal-50 text-teal-700'
-                    } ${card.anchored ? 'cursor-pointer' : ''}`}
+                    }`}
                   >
                     <CardText card={card} />
                   </p>
-                );
-              })}
+                ),
+              )}
             </div>
           );
         })

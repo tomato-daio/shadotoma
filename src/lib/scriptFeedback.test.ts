@@ -69,7 +69,10 @@ describe('buildScriptFeedback', () => {
       issues: [{ type: 'linking', words: ['turned', 'on'], si: 0 }],
     });
     const feedback = buildScriptFeedback(SENTENCES, judge);
-    expect(feedback[0].cards).toEqual([{ kind: 'dev', type: 'linking', words: ['turned', 'on'], anchored: true }]);
+    // anchorPosition=2('on'の位置): カードはペア末尾の語の直後に割り込み表示される
+    expect(feedback[0].cards).toEqual([
+      { kind: 'dev', type: 'linking', words: ['turned', 'on'], anchored: true, anchorPosition: 2 },
+    ]);
     // "on"はstatus ok だが指摘対象語なのでピンク+タップ対象にする
     expect(feedback[0].words![1]).toEqual({ text: 'turned', highlight: 'miss', cardIndices: [0] });
     expect(feedback[0].words![2]).toEqual({ text: 'on', highlight: 'miss', cardIndices: [0] });
@@ -91,7 +94,7 @@ describe('buildScriptFeedback', () => {
       previousIssueOutcomes: [{ type: 'flap', words: ['water'], improved: true }],
     });
     const feedback = buildScriptFeedback(SENTENCES, judge);
-    expect(feedback[1].cards).toEqual([{ kind: 'good', type: 'flap', words: ['water'], anchored: true }]);
+    expect(feedback[1].cards).toEqual([{ kind: 'good', type: 'flap', words: ['water'], anchored: true, anchorPosition: 3 }]);
     expect(feedback[1].words![3]).toEqual({ text: 'water', highlight: 'improved', cardIndices: [0] });
     expect(feedback[0].cards).toHaveLength(0);
   });
@@ -211,6 +214,8 @@ describe('buildScriptFeedback', () => {
     });
     const feedback = buildScriptFeedback(sentences, judge);
     expect(feedback[0].cards.map((c) => c.type)).toEqual(['flap', 'ending']);
+    // 差し込み位置はそれぞれの一致範囲の末尾（flapペア='it'の位置2、ending単語='want'の位置1）
+    expect(feedback[0].cards.map((c) => c.anchorPosition)).toEqual([2, 1]);
     expect(feedback[0].words![1]).toEqual({ text: 'want', highlight: 'miss', cardIndices: [0, 1] });
     expect(feedback[0].words![2]).toEqual({ text: 'it', highlight: 'miss', cardIndices: [0] });
   });
