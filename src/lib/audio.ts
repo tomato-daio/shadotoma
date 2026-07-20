@@ -117,18 +117,27 @@ const MIN_VOICED_RUN_SEC = 0.1;
 /** 録音全体のピークRMSがこの値未満なら、実質無音（フロートの微小ノイズのみ）として扱う。 */
 const ABSOLUTE_SILENCE_FLOOR = 1e-4;
 
+export interface SpeechSegment {
+  /** 発話区間の開始秒。 */
+  startSec: number;
+  /** 発話区間の終了秒。 */
+  endSec: number;
+}
+
+/** 隣接する発話区間の間隙がこの秒数未満なら1区間へ結合する（破裂音の閉鎖などを「間」と数えないため）。 */
+const SEGMENT_MERGE_GAP_SEC = 0.15;
+
 /**
- * 録音PCMの先頭・末尾の無音を除いた発話区間（最初に声が出た時刻〜最後に声が出た時刻）を求める
- * 純関数（DESIGN.md §8手順4・M10）。
+ * 発話(voiced)区間の列を求める純関数（M15・DESIGN.md §8f）。
  *
  * RMS窓（20ms）ごとにエネルギーを求め、全体のピークRMSの3%未満を無音とみなす。ただし、
- * 数windowだけの短い突発ノイズを発話の開始/終了と誤検出しないよう、しきい値を超える窓が
+ * 数windowだけの短い突発ノイズを発話と誤検出しないよう、しきい値を超える窓が
  * MIN_VOICED_RUN_SEC（100ms）以上連続して初めて「発話区間」として採用する。
- * 該当する連続区間が1つも無い場合（全体が無音、または短いノイズのみ）はnullを返す
- * （呼び出し側は録音全体の長さへフォールバックする）。
+ * 加えて、隣接区間の間隙が SEGMENT_MERGE_GAP_SEC 未満なら1区間へ結合する。
+ * 発話区間が1つも無い場合（全体が無音、または短いノイズのみ）は空配列を返す。
  */
-export function speechBounds(pcm: Float32Array, sampleRate: number): SpeechBounds | null {
-  if (pcm.length === 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) return null;
+export function segmentSpeech(pcm: Float32Array, sampleRate: number): SpeechSegment[] {
+  if (pcm.length === 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) return [];
 
   const windowSize = Math.max(1, Math.round(sampleRate * RMS_WINDOW_SEC));
   const windowCount = Math.ceil(pcm.length / windowSize);
@@ -144,13 +153,12 @@ export function speechBounds(pcm: Float32Array, sampleRate: number): SpeechBound
     if (value > maxRms) maxRms = value;
   }
 
-  if (maxRms < ABSOLUTE_SILENCE_FLOOR) return null;
+  if (maxRms < ABSOLUTE_SILENCE_FLOOR) return [];
 
   const threshold = maxRms * SILENCE_THRESHOLD_RATIO;
   const minVoicedWindows = Math.max(1, Math.round(MIN_VOICED_RUN_SEC / RMS_WINDOW_SEC));
 
-  let firstVoicedWindow = -1;
-  let lastVoicedWindow = -1;
+  const segments: SpeechSegment[] = [];
   let runStart = -1;
   for (let w = 0; w <= windowCount; w++) {
     const isVoiced = w < windowCount && rms[w] >= threshold;
@@ -161,19 +169,28 @@ export function speechBounds(pcm: Float32Array, sampleRate: number): SpeechBound
     if (runStart >= 0) {
       const runLength = w - runStart;
       if (runLength >= minVoicedWindows) {
-        if (firstVoicedWindow < 0) firstVoicedWindow = runStart;
-        lastVoicedWindow = w - 1;
+        const startSec = (runStart * windowSize) / sampleRate;
+        const endSec = Math.min(pcm.length, w * windowSize) / sampleRate;
+        const prev = segments[segments.length - 1];
+        if (prev && startSec - prev.endSec < SEGMENT_MERGE_GAP_SEC) {
+          prev.endSec = endSec;
+        } else {
+          segments.push({ startSec, endSec });
+        }
       }
       runStart = -1;
     }
   }
+  return segments;
+}
 
-  // 十分な長さの発話区間が1つも無い（全区間無音、または短い突発ノイズのみ）。
-  if (firstVoicedWindow < 0) return null;
-
-  const startSec = (firstVoicedWindow * windowSize) / sampleRate;
-  const endSampleExclusive = Math.min(pcm.length, (lastVoicedWindow + 1) * windowSize);
-  const endSec = endSampleExclusive / sampleRate;
-
-  return { startSec, endSec };
+/**
+ * 録音PCMの先頭・末尾の無音を除いた発話区間（最初に声が出た時刻〜最後に声が出た時刻）を求める
+ * 純関数（DESIGN.md §8手順4・M10）。判定規則はsegmentSpeechと同一で、その先頭start〜末尾endを返す。
+ * 発話区間が1つも無い場合はnullを返す（呼び出し側は録音全体の長さへフォールバックする）。
+ */
+export function speechBounds(pcm: Float32Array, sampleRate: number): SpeechBounds | null {
+  const segments = segmentSpeech(pcm, sampleRate);
+  if (segments.length === 0) return null;
+  return { startSec: segments[0].startSec, endSec: segments[segments.length - 1].endSec };
 }

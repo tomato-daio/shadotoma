@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { speechBounds } from './audio';
+import { segmentSpeech, speechBounds } from './audio';
 
 const SAMPLE_RATE = 16000;
 
@@ -107,5 +107,40 @@ describe('speechBounds', () => {
   it('サンプルレートが不正なら例外を投げずnullを返す', () => {
     expect(speechBounds(tone(1.0), 0)).toBeNull();
     expect(speechBounds(tone(1.0), Number.NaN)).toBeNull();
+  });
+});
+
+describe('segmentSpeech（M15: 発話区間の列）', () => {
+  it('発話の途中に十分な無音があるとき、2つの区間に分かれる', () => {
+    const pcm = concat(tone(1.0), silence(0.5), tone(1.0));
+    const segments = segmentSpeech(pcm, SAMPLE_RATE);
+    expect(segments).toHaveLength(2);
+    expect(segments[0].startSec).toBeLessThan(0.1);
+    expect(segments[0].endSec).toBeGreaterThan(0.9);
+    expect(segments[0].endSec).toBeLessThan(1.2);
+    expect(segments[1].startSec).toBeGreaterThan(1.4);
+    expect(segments[1].startSec).toBeLessThan(1.6);
+    expect(segments[1].endSec).toBeGreaterThan(2.4);
+  });
+
+  it('間隙が結合しきい値(0.15秒)未満なら1区間へ結合する（破裂音の閉鎖を間と数えない）', () => {
+    const pcm = concat(tone(1.0), silence(0.1), tone(1.0));
+    const segments = segmentSpeech(pcm, SAMPLE_RATE);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].startSec).toBeLessThan(0.1);
+    expect(segments[0].endSec).toBeGreaterThan(2.0);
+  });
+
+  it('無音のみ・突発ノイズのみは空配列を返す', () => {
+    expect(segmentSpeech(silence(2), SAMPLE_RATE)).toHaveLength(0);
+    expect(segmentSpeech(concat(silence(1.0), tone(0.03), silence(1.0)), SAMPLE_RATE)).toHaveLength(0);
+  });
+
+  it('speechBoundsはsegmentSpeechの先頭start〜末尾endと一致する', () => {
+    const pcm = concat(silence(0.5), tone(0.8), silence(0.6), tone(0.8), silence(0.5));
+    const segments = segmentSpeech(pcm, SAMPLE_RATE);
+    const bounds = speechBounds(pcm, SAMPLE_RATE);
+    expect(segments).toHaveLength(2);
+    expect(bounds).toEqual({ startSec: segments[0].startSec, endSec: segments[1].endSec });
   });
 });
