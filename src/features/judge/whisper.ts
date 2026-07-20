@@ -19,13 +19,24 @@
  * 呼び出し元（runJudge.ts / SelfTest.tsx）は変更不要。
  */
 
-import type { WhisperProgressEvent, WhisperWorkerRequest, WhisperWorkerResponse } from './whisper.protocol';
+import type {
+  WhisperProgressEvent,
+  WhisperTimedWord,
+  WhisperWorkerRequest,
+  WhisperWorkerResponse,
+} from './whisper.protocol';
 
-export type { WhisperProgressPhase, WhisperProgressEvent } from './whisper.protocol';
+export type { WhisperProgressPhase, WhisperProgressEvent, WhisperTimedWord } from './whisper.protocol';
 export type WhisperProgressCallback = (event: WhisperProgressEvent) => void;
 
+/** 文字起こし結果。wordsはwordTimestamps指定時のみ（取得できなかった場合はnull）。 */
+export interface TranscriptionResult {
+  text: string;
+  words: WhisperTimedWord[] | null;
+}
+
 interface PendingRequest {
-  resolve: (text: string) => void;
+  resolve: (result: TranscriptionResult) => void;
   reject: (err: unknown) => void;
   onProgress?: WhisperProgressCallback;
 }
@@ -64,7 +75,7 @@ function getWorker(): Worker {
 
     if (msg.type === 'result') {
       pending.delete(msg.id);
-      req.resolve(msg.text);
+      req.resolve({ text: msg.text, words: msg.words ?? null });
     } else {
       // ワーカー内でのエラー（モデルDL失敗・推論エラー等）。
       // ここではpending.deleteしない: このリクエスト自身もterminateWorker内のreject対象に
@@ -90,18 +101,26 @@ function getWorker(): Worker {
  *
  * @param modelId 使用するWhisperモデルID（whisperModels.tsで解決したもの。M8: 設定で切替可能）。
  *   前回と異なるIDを渡すとワーカー内でパイプラインが再構築される。
+ * @param options wordTimestamps: trueで単語タイムスタンプも取得する（M15: _timestampedモデルとセットで使う）。
  */
 export function transcribeAudio(
   pcm: Float32Array,
   modelId: string,
+  options?: { wordTimestamps?: boolean },
   onProgress?: WhisperProgressCallback,
-): Promise<string> {
+): Promise<TranscriptionResult> {
   const w = getWorker();
   const id = ++requestSeq;
 
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<TranscriptionResult>((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress });
-    const message: WhisperWorkerRequest = { type: 'transcribe', id, pcm, modelId };
+    const message: WhisperWorkerRequest = {
+      type: 'transcribe',
+      id,
+      pcm,
+      modelId,
+      wordTimestamps: options?.wordTimestamps === true,
+    };
     try {
       w.postMessage(message, [pcm.buffer]);
     } catch (err) {

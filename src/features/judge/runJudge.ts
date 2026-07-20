@@ -76,7 +76,7 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
   // M8: 設定ページで選択したモデル（appState 'whisperModel'）を毎回解決して使う。
   // 切替後の最初の判定からワーカー内でパイプラインが再構築され、新モデルが反映される。
   const modelKey = await getSelectedWhisperModelKey();
-  const transcript = await transcribeAudio(pcm, whisperModelIdFor(modelKey), onProgress);
+  const { text: transcript } = await transcribeAudio(pcm, whisperModelIdFor(modelKey), undefined, onProgress);
 
   const scriptWords = buildScriptWords(sentences);
   const recognizedWords = transcript.length > 0 ? transcript.split(/\s+/).filter(Boolean) : [];

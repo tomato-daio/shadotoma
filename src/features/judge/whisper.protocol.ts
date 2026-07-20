@@ -12,6 +12,13 @@ export interface WhisperProgressEvent {
   progress?: number;
 }
 
+/** Whisperが返した単語1つぶんのタイミング（M15: return_timestamps:'word' の出力を整形したもの）。 */
+export interface WhisperTimedWord {
+  word: string;
+  startSec: number;
+  endSec: number;
+}
+
 /** UIスレッド → ワーカー */
 export interface WhisperTranscribeRequest {
   type: 'transcribe';
@@ -24,6 +31,11 @@ export interface WhisperTranscribeRequest {
    * ワーカーはappState/IndexedDBに触れないため、UIスレッド側で解決済みの文字列を必ず渡す。
    */
   modelId: string;
+  /**
+   * trueなら return_timestamps:'word' で単語タイムスタンプも返す（M15: お手本解析用）。
+   * cross-attention出力付きの _timestamped モデル（whisperModels.ts）とセットで指定すること。
+   */
+  wordTimestamps?: boolean;
 }
 
 export type WhisperWorkerRequest = WhisperTranscribeRequest;
@@ -31,5 +43,5 @@ export type WhisperWorkerRequest = WhisperTranscribeRequest;
 /** ワーカー → UIスレッド */
 export type WhisperWorkerResponse =
   | { type: 'progress'; id: number; event: WhisperProgressEvent }
-  | { type: 'result'; id: number; text: string }
+  | { type: 'result'; id: number; text: string; words?: WhisperTimedWord[] }
   | { type: 'error'; id: number; message: string };

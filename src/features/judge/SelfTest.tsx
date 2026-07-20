@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { alignWords, buildScriptWords } from '../../lib/align';
 import { decodeToMono16k, WHISPER_SAMPLE_RATE } from '../../lib/audio';
 import type { Material } from '../../lib/db';
+import { validateTimedWords } from '../../lib/linkingRealization';
 import { transcribeAudio, type WhisperProgressEvent } from './whisper';
-import { getSelectedWhisperModelKey, whisperModelIdFor, WHISPER_MODEL_OPTIONS } from './whisperModels';
+import { getSelectedWhisperModelKey, whisperTimestampedModelIdFor, WHISPER_MODEL_OPTIONS } from './whisperModels';
 
 /** 自己テストで文字起こしする冒頭部分の長さ（秒）。実行時間短縮のため全音声ではなくここだけを使う。 */
 const SELF_TEST_CLIP_SEC = 60;
@@ -26,6 +27,10 @@ interface SelfTestState {
   materialTitle?: string;
   /** 使用したモデルの表示ラベル（M8: モデル切替が自己テストにも反映されていることを確認できるように）。 */
   modelLabel?: string;
+  /** 単語タイムスタンプの取得率（取得語数/認識語数。M15: お手本解析の実機検証用）。 */
+  timestampCoverage?: number;
+  /** タイムスタンプ列が品質ゲート（validateTimedWords）を通過したか。 */
+  timestampsValid?: boolean;
   error?: string;
 }
 
@@ -85,9 +90,17 @@ export function SelfTest({ materials }: SelfTestProps) {
       const clipLength = Math.min(fullPcm.length, WHISPER_SAMPLE_RATE * SELF_TEST_CLIP_SEC);
       const pcm = fullPcm.slice(0, clipLength);
 
-      const transcript = await transcribeAudio(pcm, whisperModelIdFor(modelKey), (event) => {
-        setState((s) => ({ ...s, phase: event.phase, progress: event.progress }));
-      });
+      // M15: お手本解析と同じ _timestamped モデル+word timestampsで実行する。認識重みは通常版と
+      // 同等なのでprecisionの検収基準はそのまま使え、タイムスタンプの取得率・品質も一度に確認できる
+      // （お手本解析用モデルのDLキャッシュも先に温まる）。
+      const { text: transcript, words } = await transcribeAudio(
+        pcm,
+        whisperTimestampedModelIdFor(modelKey),
+        { wordTimestamps: true },
+        (event) => {
+          setState((s) => ({ ...s, phase: event.phase, progress: event.progress }));
+        },
+      );
 
       const scriptWords = buildScriptWords(material.sentences);
       const recognizedWords = transcript.length > 0 ? transcript.split(/\s+/).filter(Boolean) : [];
@@ -96,7 +109,11 @@ export function SelfTest({ materials }: SelfTestProps) {
       const { matchedCount } = alignWords(scriptWords, recognizedWords);
       const precision = recognizedWords.length > 0 ? matchedCount / recognizedWords.length : 0;
 
-      setState({ status: 'done', precision, materialTitle: material.title, modelLabel });
+      const timestampCoverage = recognizedWords.length > 0 ? (words?.length ?? 0) / recognizedWords.length : 0;
+      const timestampsValid =
+        validateTimedWords(words ?? undefined, recognizedWords.length, clipLength / WHISPER_SAMPLE_RATE) !== null;
+
+      setState({ status: 'done', precision, materialTitle: material.title, modelLabel, timestampCoverage, timestampsValid });
     } catch (err) {
       setState({
         status: 'error',
@@ -136,15 +153,23 @@ export function SelfTest({ materials }: SelfTestProps) {
       ) : null}
 
       {state.status === 'done' && state.precision !== undefined ? (
-        <p
-          className={`text-sm font-semibold ${
-            state.precision > SELF_TEST_PASS_THRESHOLD ? 'text-green-700' : 'text-red-600'
-          }`}
-        >
-          [{state.materialTitle}]{state.modelLabel ? ` ${state.modelLabel} /` : ''} precision(冒頭
-          {SELF_TEST_CLIP_SEC}秒) = {(state.precision * 100).toFixed(1)}% (
-          {state.precision > SELF_TEST_PASS_THRESHOLD ? '合格' : '要確認'})
-        </p>
+        <>
+          <p
+            className={`text-sm font-semibold ${
+              state.precision > SELF_TEST_PASS_THRESHOLD ? 'text-green-700' : 'text-red-600'
+            }`}
+          >
+            [{state.materialTitle}]{state.modelLabel ? ` ${state.modelLabel} /` : ''} precision(冒頭
+            {SELF_TEST_CLIP_SEC}秒) = {(state.precision * 100).toFixed(1)}% (
+            {state.precision > SELF_TEST_PASS_THRESHOLD ? '合格' : '要確認'})
+          </p>
+          {state.timestampCoverage !== undefined ? (
+            <p className="text-xs text-neutral-500">
+              単語タイムスタンプ: 取得率 {(state.timestampCoverage * 100).toFixed(0)}% / 品質ゲート
+              {state.timestampsValid ? '通過（お手本比較の連結判定が有効になります）' : '不合格（連結判定はスキップされます）'}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       {state.status === 'error' ? <p className="text-xs text-red-600">エラー: {state.error}</p> : null}

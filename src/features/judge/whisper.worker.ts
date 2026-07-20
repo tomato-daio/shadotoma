@@ -73,10 +73,46 @@ function postResponse(response: WhisperWorkerResponse): void {
   self.postMessage(response);
 }
 
-async function handleTranscribe(id: number, pcm: Float32Array, modelId: string): Promise<void> {
+/** return_timestamps:'word' 指定時にtransformers.jsが返すchunkの形（型定義が緩いため自前で受ける）。 */
+interface RecognizedChunk {
+  text?: string;
+  timestamp?: [number | null, number | null];
+}
+
+async function handleTranscribe(
+  id: number,
+  pcm: Float32Array,
+  modelId: string,
+  wordTimestamps: boolean,
+): Promise<void> {
   try {
     const transcriber = await getPipeline(modelId, (event) => postResponse({ type: 'progress', id, event }));
     postResponse({ type: 'progress', id, event: { phase: 'transcribing' } });
+
+    if (wordTimestamps) {
+      try {
+        // chunk_length_s: 28 — transformers.js issue #1358（30秒ちょうどのチャンク境界で
+        // wordタイムスタンプが壊れる）の回避。'word' はcross-attention(DTW)対応の
+        // _timestamped モデルが必要（whisperModels.ts参照）。
+        const output = await transcriber(pcm, { chunk_length_s: 28, stride_length_s: 5, return_timestamps: 'word' });
+        const result = Array.isArray(output) ? output[0] : output;
+        const chunks = (result as { chunks?: RecognizedChunk[] } | undefined)?.chunks;
+        const words = Array.isArray(chunks)
+          ? chunks
+              .map((c) => ({
+                word: (c.text ?? '').trim(),
+                startSec: c.timestamp?.[0] ?? Number.NaN,
+                endSec: c.timestamp?.[1] ?? c.timestamp?.[0] ?? Number.NaN,
+              }))
+              .filter((w) => w.word.length > 0)
+          : undefined;
+        postResponse({ type: 'result', id, text: result?.text?.trim() ?? '', words });
+        return;
+      } catch {
+        // タイムスタンプ付き推論に失敗した場合は、下のタイムスタンプなし推論で1回だけ再試行する
+        // （静かな縮退。呼び出し側はwords無しとして扱う）。
+      }
+    }
 
     // 60秒を超える音声にも対応できるよう、内部でチャンク分割（chunk_length_s）を行う。
     const output = await transcriber(pcm, { chunk_length_s: 30, stride_length_s: 5 });
@@ -91,6 +127,6 @@ self.onmessage = (ev: MessageEvent<WhisperWorkerRequest>) => {
   const msg = ev.data;
   if (msg.type === 'transcribe') {
     // 直前のリクエストの完了を待ってから処理する（結果が返る順序も呼び出し順のまま維持される）。
-    queue = queue.then(() => handleTranscribe(msg.id, msg.pcm, msg.modelId));
+    queue = queue.then(() => handleTranscribe(msg.id, msg.pcm, msg.modelId, msg.wordTimestamps === true));
   }
 };

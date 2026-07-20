@@ -18,6 +18,16 @@ export const WHISPER_MODEL_IDS: Record<WhisperModelKey, string> = {
   fast: 'onnx-community/whisper-tiny.en',
 };
 
+/**
+ * word timestamps対応版（cross-attention出力付きエクスポート。M15: お手本解析専用）。
+ * return_timestamps:'word' はDTWアライン用のattentionメタデータを持つこのエクスポートが必要で、
+ * 通常版とは別モデルとして追加ダウンロードされる（初回のみ・Cache APIにキャッシュ）。
+ */
+export const WHISPER_TIMESTAMPED_MODEL_IDS: Record<WhisperModelKey, string> = {
+  high: 'onnx-community/whisper-base.en_timestamped',
+  fast: 'onnx-community/whisper-tiny.en_timestamped',
+};
+
 /** 初期値は高精度（base.en）。DESIGN.md §8手順2の指定どおり。 */
 export const DEFAULT_WHISPER_MODEL_KEY: WhisperModelKey = 'high';
 
@@ -50,6 +60,11 @@ export function isWhisperModelKey(value: unknown): value is WhisperModelKey {
 
 export function whisperModelIdFor(key: WhisperModelKey): string {
   return WHISPER_MODEL_IDS[key];
+}
+
+/** word timestamps対応モデルのID（M15: お手本解析用）。 */
+export function whisperTimestampedModelIdFor(key: WhisperModelKey): string {
+  return WHISPER_TIMESTAMPED_MODEL_IDS[key];
 }
 
 /** 保存済みのモデル選択を取得する。未設定・不正値の場合は初期値（高精度）。 */
