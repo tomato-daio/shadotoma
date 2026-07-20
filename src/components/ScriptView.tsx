@@ -172,11 +172,13 @@ export const ScriptView = memo(ScriptViewImpl);
 function CardText({ card }: { card: FeedbackCard }) {
   if (card.kind === 'dev') {
     // M15: お手本音声で連結が確認できたペアは「お手本ではこう発音している」根拠つきの文言にする。
+    // 現象ラベル（脱落・フラップ等）は残す（elisionでは「繋げる」より「音を落とす」が要点のため）。
     if (card.referenceLinked) {
       return (
         <>
           <span className="font-semibold">🔥 Development</span>{' '}
-          お手本では「{card.words.join(' ')}」を繋げて発音しています。真似して繋げてみましょう
+          お手本では「{card.words.join(' ')}」を繋げて発音しています。{PHENOMENON_LABEL[card.type]}
+          を意識して真似してみましょう
         </>
       );
     }

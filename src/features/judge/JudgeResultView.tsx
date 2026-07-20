@@ -145,7 +145,8 @@ function ReferenceComparisonCard({ comparison }: { comparison: ReferenceComparis
         : `${ratio.toFixed(1)}倍速い`;
 
   const pauseDiff = comparison.userPauseCount - comparison.referencePauseCount;
-  const pauseValue = pauseDiff > 0 ? `+${pauseDiff}箇所` : 'お手本並み';
+  // 正負どちらの乖離も表示する（間を飛ばした早口読みを「お手本並み」と誤表示しないため）。
+  const pauseValue = pauseDiff > 0 ? `+${pauseDiff}箇所` : pauseDiff < -1 ? `${pauseDiff}箇所` : 'お手本並み';
 
   let pitchValue = '―';
   if (

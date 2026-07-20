@@ -118,20 +118,31 @@ export function extractPitchStats(pcm: Float32Array, sampleRate: number): PitchS
     while (chosenLag + 1 <= maxLag && corr[chosenLag + 1] > corr[chosenLag]) {
       chosenLag++;
     }
+    // 探索下限の境界アーティファクト対策: F0_MIN未満の低周波（電源ハム・空調等）が支配的な
+    // フレームではcorrがminLagから単調下降し、真の局所ピークでないminLagが選ばれて
+    // F0_MAX相当のスパイクになる。minLagに張り付き、かつ隣が下り坂（=ピークでない）の
+    // フレームは無声として捨てる（犠牲はちょうどF0_MAXのフレームのみ）。
+    if (chosenLag === minLag && corr[minLag + 1] < corr[minLag]) continue;
     f0s.push(sr / chosenLag);
   }
 
   if (f0s.length < MIN_VOICED_FRAMES) return null;
 
-  const sorted = [...f0s].sort((a, b) => a - b);
+  // 低域ハム等の外れ値がmedian/SDを汚染しないよう、仮の中央値から±1オクターブ超を除外して統計を取る。
+  const sortedAll = [...f0s].sort((a, b) => a - b);
+  const rawMedian = sortedAll[Math.floor(sortedAll.length / 2)];
+  const filtered = f0s.filter((f0) => Math.abs(12 * Math.log2(f0 / rawMedian)) <= 12);
+  if (filtered.length < MIN_VOICED_FRAMES) return null;
+
+  const sorted = [...filtered].sort((a, b) => a - b);
   const medianHz = sorted[Math.floor(sorted.length / 2)];
-  const semis = f0s.map((f0) => 12 * Math.log2(f0 / medianHz));
+  const semis = filtered.map((f0) => 12 * Math.log2(f0 / medianHz));
   const meanSemi = semis.reduce((sum, v) => sum + v, 0) / semis.length;
   const variance = semis.reduce((sum, v) => sum + (v - meanSemi) * (v - meanSemi), 0) / semis.length;
 
   return {
     medianHz,
     semitoneSd: Math.sqrt(variance),
-    voicedRatio: f0s.length / frameCount,
+    voicedRatio: filtered.length / frameCount,
   };
 }

@@ -19,7 +19,7 @@
 import { alignWords, buildScriptWords } from '../../lib/align';
 import { decodeToMono16k, WHISPER_SAMPLE_RATE } from '../../lib/audio';
 import type { JudgeResult, Material } from '../../lib/db';
-import { computeMatchRate, computeWpm, generateFeedback } from '../../lib/feedback';
+import { computeMatchRate, computeWpm, generateFeedback, LOW_RECOGNITION_RATIO } from '../../lib/feedback';
 import { annotateIssuesWithLinking } from '../../lib/linkingRealization';
 import { comparePreviousIssues, detectPhenomena, type PhenomenonIssue } from '../../lib/phenomena';
 import { buildReferenceComparison, buildSpeechProfile } from '../../lib/referenceComparison';
@@ -109,8 +109,15 @@ export async function runJudge(params: RunJudgeParams): Promise<RunJudgeOutput> 
       ? computeWpm(scriptWords.length, material.durationSec)
       : undefined;
 
+  // 認識がほぼゼロ（マイク不調・雑音のみ等）の録音では、速度・間・抑揚の比較値がすべて無意味
+  // （「100倍ゆっくり」等の極端表示）になるため、比較ごと縮退する。referenceWpm=0（空スクリプト）も同様。
+  const recognitionRatio = scriptWords.length > 0 ? recognizedWords.length / scriptWords.length : 0;
   const referenceComparison =
-    userProfile && refRecord?.profile && referenceWpm !== undefined
+    userProfile &&
+    refRecord?.profile &&
+    referenceWpm !== undefined &&
+    referenceWpm > 0 &&
+    recognitionRatio >= LOW_RECOGNITION_RATIO
       ? buildReferenceComparison({
           userProfile,
           referenceProfile: refRecord.profile,

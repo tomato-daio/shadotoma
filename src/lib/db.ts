@@ -573,29 +573,38 @@ export async function syncBundledMaterials(baseUrl: string): Promise<void> {
     const indexIds = new Set(validItems.map((item) => item.id));
 
     const db = await getDB();
-    const tx = db.transaction(['materials', 'referenceAnalysis'], 'readwrite');
-    const materialsStore = tx.objectStore('materials');
-    const referenceStore = tx.objectStore('referenceAnalysis');
-    const existingBundled = await materialsStore.index('by-source').getAllKeys('voa');
+    const tx = db.transaction('materials', 'readwrite');
+    const existingBundled = await tx.store.index('by-source').getAllKeys('voa');
+    const deletedIds: string[] = [];
     for (const item of validItems) {
       // 既存レコードへ後付けした訳・語彙(ja/vocab)を、indexからの丸ごと上書きで消さないよう引き継ぐ
       // （scriptAnnotations.tsのクリップボード往復取り込みで付与されたデータの保護）。
-      const existing = await materialsStore.get(item.id);
+      const existing = await tx.store.get(item.id);
       const merged = existing
         ? { ...item, sentences: mergeSentenceAnnotations(existing.sentences, item.sentences) }
         : item;
-      await materialsStore.put(merged);
+      await tx.store.put(merged);
     }
     for (const key of existingBundled) {
       if (!indexIds.has(key as string)) {
-        await materialsStore.delete(key);
-        // お手本解析キャッシュも一緒に削除する（M15: 記事の再分割で音声が差し替わったときに
-        // 陳腐化したタイミング・プロファイルを残さないため。submissionsは履歴として残す方針と異なり、
-        // これは再生成可能な純キャッシュなので消してよい）。
-        await referenceStore.delete(key as string);
+        await tx.store.delete(key);
+        deletedIds.push(key as string);
       }
     }
     await tx.done;
+
+    // 削除したbundled教材のお手本解析キャッシュも消す（M15: 記事の再分割で音声が差し替わったときに
+    // 陳腐化したタイミング・プロファイルを残さないため。submissionsは履歴として残す方針と異なり、
+    // これは再生成可能な純キャッシュなので消してよい）。教材同期本体と別トランザクションにするのは、
+    // referenceAnalysisストア欠損DB（バージョンだけ上がりupgrade未完了の壊れ方。v2→v3の前例）でも
+    // 教材同期を巻き添えにしないため。純キャッシュのため2tx間のアトミック性は不要。
+    if (deletedIds.length > 0 && db.objectStoreNames.contains('referenceAnalysis')) {
+      const refTx = db.transaction('referenceAnalysis', 'readwrite');
+      for (const id of deletedIds) {
+        await refTx.store.delete(id);
+      }
+      await refTx.done;
+    }
   } catch {
     // オフライン・fetch失敗時は何もせず既存DBのまま継続する。
   }

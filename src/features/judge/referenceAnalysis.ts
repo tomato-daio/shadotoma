@@ -33,10 +33,21 @@ async function fetchReferenceBlob(material: Material): Promise<Blob | null> {
     return material.audioBlob ?? null;
   }
   if (!material.audioUrl) return null;
-  const res = await fetch(`${import.meta.env.BASE_URL}${material.audioUrl}`);
+  // 低速回線でのストールが判定結果の表示を長時間ブロックしないよう、fetchには上限を設ける
+  // （タイムアウト例外は呼び出し側のcatchがnull縮退として処理する）。
+  const res = await fetch(`${import.meta.env.BASE_URL}${material.audioUrl}`, {
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!res.ok) return null;
   return res.blob();
 }
+
+/**
+ * このセッション中に解析へ失敗した教材×モデル（負のキャッシュ）。
+ * 失敗のたびにワーカー破棄→通常モデルの再構築コストを全提出で繰り返さないよう、
+ * 同一セッション内の再試行を抑止する（ページ再読込で自然に再試行される）。
+ */
+const failedAnalyses = new Set<string>();
 
 /**
  * 教材のお手本解析結果を返す（キャッシュがあれば即返し、無ければ解析して保存する）。
@@ -48,9 +59,23 @@ export async function ensureReferenceAnalysis(args: {
   onProgress?: ReferenceAnalysisProgressCallback;
 }): Promise<ReferenceAnalysisRecord | null> {
   const { material, modelKey, onProgress } = args;
+  const failKey = `${material.id}:${modelKey}`;
+  if (failedAnalyses.has(failKey)) return null;
   try {
     const cached = await getReferenceAnalysis(material.id);
-    if (cached && cached.modelKey === modelKey) return cached;
+    // modelKey一致に加え、同一IDのまま音声が差し替わったケース（記事の再分割等）を
+    // durationSecの乖離で検知して再解析する（±1.5秒はmp3デコードのパディング吸収用）。
+    if (
+      cached &&
+      cached.modelKey === modelKey &&
+      (material.durationSec === undefined || Math.abs(cached.pcmDurationSec - material.durationSec) <= 1.5)
+    ) {
+      return cached;
+    }
+
+    // フェーズ通知はfetchの前に出す（低速回線でのfetch/decode中に前フェーズの
+    // 「文字起こし中…」表示が残り続けるのを防ぐ）。
+    onProgress?.({ phase: 'reference-analysis' });
 
     const blob = await fetchReferenceBlob(material);
     if (!blob) return null;
@@ -60,16 +85,18 @@ export async function ensureReferenceAnalysis(args: {
     const profile = buildSpeechProfile(pcm, WHISPER_SAMPLE_RATE);
     const pcmDurationSec = pcm.length / WHISPER_SAMPLE_RATE;
 
-    onProgress?.({ phase: 'reference-analysis' });
     const { text, words } = await transcribeAudio(
       pcm,
       whisperTimestampedModelIdFor(modelKey),
       { wordTimestamps: true },
       (event) => {
-        // timestampedモデルの初回DL進捗だけは転送する。transcribing通知は握りつぶし、
-        // 外側の「お手本音声を解析中…」フェーズ表示を維持する。
         if (event.phase === 'model-download') {
+          // timestampedモデルのDL/読込進捗は転送する（transformers.jsはCache API読込でも発火する）。
           onProgress?.({ phase: 'model-download', progress: event.progress });
+        } else {
+          // transcribing = モデル読込完了・お手本推論の開始。表示を「お手本音声を解析中…」へ
+          // 戻す（戻さないと推論中ずっと「ダウンロード中…100%」表示に張り付く）。
+          onProgress?.({ phase: 'reference-analysis' });
         }
       },
     );
@@ -88,7 +115,10 @@ export async function ensureReferenceAnalysis(args: {
     await putReferenceAnalysis(record);
     return record;
   } catch {
-    // お手本解析は付加機能。失敗しても判定本体を壊さない（次回提出時に再試行される）。
+    // お手本解析は付加機能。失敗しても判定本体を壊さない。同一セッション内の再試行は
+    // 負のキャッシュで抑止し（毎提出のワーカー破棄・再構築の連鎖を防ぐ）、
+    // ページ再読込（オンライン復帰後など）で自然に再試行される。
+    failedAnalyses.add(failKey);
     return null;
   }
 }

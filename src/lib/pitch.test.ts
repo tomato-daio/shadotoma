@@ -67,6 +67,10 @@ describe('extractPitchStats', () => {
     expect(high!.medianHz).toBeLessThan(345);
   });
 
+  it('F0範囲未満の低周波(50Hzハム)のみは有声とみなさずnullを返す（境界アーティファクト対策）', () => {
+    expect(extractPitchStats(tone(50, 2), SAMPLE_RATE)).toBeNull();
+  });
+
   it('無音はnullを返す', () => {
     expect(extractPitchStats(new Float32Array(SAMPLE_RATE * 2), SAMPLE_RATE)).toBeNull();
     expect(extractPitchStats(new Float32Array(0), SAMPLE_RATE)).toBeNull();

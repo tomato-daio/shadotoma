@@ -235,6 +235,36 @@ describe('generateFeedback', () => {
     expect(goodPoints.some((p) => p.includes('抑揚のある話し方'))).toBe(true);
   });
 
+  it('お手本より間が大幅に少ない（間を飛ばした早口読み）ときはリズムのGoodを出さない', () => {
+    const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+    const { goodPoints } = generateFeedback({
+      wordMarks,
+      sentences: SENTENCES,
+      wpm: 100,
+      referenceComparison: {
+        speedRatio: 1.3,
+        userWpm: 130,
+        referenceWpm: 100,
+        userPauseCount: 0,
+        referencePauseCount: 5,
+        userLongestPauseSec: 0,
+        referenceLongestPauseSec: 0.8,
+      },
+    });
+    expect(goodPoints.some((p) => p.includes('余分な間'))).toBe(false);
+  });
+
+  it('認識がほぼゼロのときは速度の倍率コメントを出さず、原因案内を優先する', () => {
+    const wordMarks = buildWordMarks(
+      0,
+      ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+      ['missed', 'missed', 'missed', 'missed', 'missed', 'missed', 'missed'],
+    );
+    const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 0, referenceWpm: 100 });
+    expect(devPoints.some((p) => p.includes('認識できませんでした'))).toBe(true);
+    expect(devPoints.some((p) => p.includes('倍ゆっくり'))).toBe(false);
+  });
+
   it('お手本で連結が確認できたペアは「お手本では〜を繋げて発音しています」文言になる', () => {
     const wordMarks = buildWordMarks(0, ['They', 'turned', 'on', 'the'], ['ok', 'missed', 'ok', 'ok']);
     const issues: PhenomenonIssue[] = [{ type: 'linking', words: ['turned', 'on'], si: 0, referenceLinked: true }];

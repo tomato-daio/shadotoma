@@ -70,8 +70,11 @@ const WPM_TOLERANCE_RATIO = 0.15;
 const NOTABLE_STREAK_MIN_LENGTH = 4;
 /** 「挿入語ゼロ」を褒める条件として要求する最低一致率（全語missedのような空認識で誤って褒めないため）。 */
 const NO_INSERTION_PRAISE_MIN_MATCH_RATE = 0.3;
-/** 認識語数（ok+sub+insertions）がスクリプト語数に対してこの割合を下回ったら「ほぼ認識できていない」とみなす。 */
-const LOW_RECOGNITION_RATIO = 0.15;
+/**
+ * 認識語数（ok+sub+insertions）がスクリプト語数に対してこの割合を下回ったら「ほぼ認識できていない」
+ * とみなす（マイク不調等）。runJudge.tsもお手本比較の抑止判定に同じ基準を使う（M15）。
+ */
+export const LOW_RECOGNITION_RATIO = 0.15;
 
 /** wordMarksからmatchRate（0-1、スクリプト語のうち言えた割合）を計算する。 */
 export function computeMatchRate(wordMarks: WordMark[]): number {
@@ -408,7 +411,9 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   const devCandidates: string[] = [];
 
   // 認識語がほぼ無い（空認識・雑音のみ等）場合は、他の指摘より優先して原因の心当たりを案内する。
-  if (wordMarks.length > 0 && recognizedWordCount / wordMarks.length < LOW_RECOGNITION_RATIO) {
+  // このとき速度系のコメントはwpm≈0による無意味な倍率（「約150倍ゆっくり」等）になるため抑止する。
+  const lowRecognition = wordMarks.length > 0 && recognizedWordCount / wordMarks.length < LOW_RECOGNITION_RATIO;
+  if (lowRecognition) {
     devCandidates.push('音声がほとんど認識できませんでした。マイク位置とイヤホン使用を確認してください。');
   }
 
@@ -435,7 +440,7 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
     }
   }
 
-  if (referenceWpm !== undefined && referenceWpm > 0) {
+  if (!lowRecognition && referenceWpm !== undefined && referenceWpm > 0) {
     const ratio = wpm / referenceWpm;
     if (Math.abs(ratio - 1) <= WPM_TOLERANCE_RATIO) {
       goodCandidates.push(
@@ -447,8 +452,14 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   // M15: お手本音声との比較（間・抑揚）。referenceComparisonが無ければ何も出さない。
   const rc = input.referenceComparison;
   if (rc) {
-    if (rc.userPauseCount <= rc.referencePauseCount + 1 && matchRate >= 0.6) {
-      goodCandidates.push('お手本と同じようなリズムで、余分な間（ポーズ）を作らずに読み進められていました。');
+    // 上限だけでなく下限も見る: 間が大幅に少ない（間を飛ばした早口読み）を「お手本並みのリズム」と
+    // 褒めない。文言は+1箇所の許容と矛盾しないよう「ほとんど無く」に留める（比較カードの表示と整合）。
+    if (
+      rc.userPauseCount >= rc.referencePauseCount - 1 &&
+      rc.userPauseCount <= rc.referencePauseCount + 1 &&
+      matchRate >= 0.6
+    ) {
+      goodCandidates.push('お手本と同じようなリズムで、余分な間（ポーズ）がほとんど無く読み進められていました。');
     }
     if (
       rc.userPitchSd !== undefined &&
@@ -492,7 +503,7 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
     );
   }
 
-  if (referenceWpm !== undefined && referenceWpm > 0) {
+  if (!lowRecognition && referenceWpm !== undefined && referenceWpm > 0) {
     const ratio = wpm / referenceWpm;
     if (ratio < 1 - WPM_TOLERANCE_RATIO) {
       // M15: 「1.2倍ゆっくり」のような倍率表現にする（WPMだけより差が直感的に伝わるため）。
