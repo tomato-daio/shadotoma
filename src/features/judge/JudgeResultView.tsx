@@ -2,6 +2,12 @@ import { useState } from 'react';
 import type { WordMark } from '../../lib/align';
 import type { AzurePronunciationResult, AzureWordScore, JudgeResult } from '../../lib/db';
 import { PHENOMENON_LABEL, type PreviousIssueOutcome } from '../../lib/phenomena';
+import {
+  PITCH_FLAT_RATIO,
+  PITCH_GOOD_RATIO,
+  PITCH_MIN_MEANINGFUL_SD,
+  type ReferenceComparison,
+} from '../../lib/referenceComparison';
 import { generateAzureComments } from './azureComments';
 import { worstWords } from './azurePronunciation';
 
@@ -43,6 +49,8 @@ export function JudgeResultView({ judge, previousMatchRate, transcript, classNam
           前回比 {deltaPercent >= 0 ? `+${deltaPercent}` : deltaPercent}pt
         </p>
       ) : null}
+
+      {judge.referenceComparison ? <ReferenceComparisonCard comparison={judge.referenceComparison} /> : null}
 
       {judge.azure ? (
         <AzureScoreCard azure={judge.azure} />
@@ -119,6 +127,67 @@ function TranscriptSection({ transcript }: { transcript?: string }) {
         </p>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * 「お手本との比較」カード（DESIGN.md §8f・M15）。速さ・間(ポーズ)・抑揚の3タイル。
+ * judge.referenceComparisonが無い提出（旧データ・お手本解析なし）では呼ばれない。
+ */
+function ReferenceComparisonCard({ comparison }: { comparison: ReferenceComparison }) {
+  const ratio = comparison.speedRatio;
+  // ±15%以内は「ほぼ同じ」（feedback.tsのWPM_TOLERANCE_RATIOと同じ基準）。
+  const speedValue =
+    Math.abs(ratio - 1) <= 0.15
+      ? 'ほぼ同じ'
+      : ratio < 1
+        ? `${(1 / Math.max(ratio, 0.01)).toFixed(1)}倍ゆっくり`
+        : `${ratio.toFixed(1)}倍速い`;
+
+  const pauseDiff = comparison.userPauseCount - comparison.referencePauseCount;
+  const pauseValue = pauseDiff > 0 ? `+${pauseDiff}箇所` : 'お手本並み';
+
+  let pitchValue = '―';
+  if (
+    comparison.userPitchSd !== undefined &&
+    comparison.referencePitchSd !== undefined &&
+    comparison.referencePitchSd >= PITCH_MIN_MEANINGFUL_SD
+  ) {
+    pitchValue =
+      comparison.userPitchSd >= comparison.referencePitchSd * PITCH_GOOD_RATIO
+        ? 'お手本並み'
+        : comparison.userPitchSd < comparison.referencePitchSd * PITCH_FLAT_RATIO
+          ? '平坦め'
+          : 'やや控えめ';
+  }
+
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3">
+      <p className="text-sm font-semibold text-neutral-700">お手本との比較</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        <ReferenceTile
+          label="速さ"
+          value={speedValue}
+          note={`${Math.round(comparison.userWpm)} / ${Math.round(comparison.referenceWpm)} WPM`}
+        />
+        <ReferenceTile
+          label="間（ポーズ）"
+          value={pauseValue}
+          note={`${comparison.userPauseCount}回 / お手本${comparison.referencePauseCount}回`}
+        />
+        <ReferenceTile label="抑揚" value={pitchValue} />
+      </div>
+    </section>
+  );
+}
+
+function ReferenceTile({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-1.5 text-center">
+      <p className="text-xs font-bold text-neutral-700">{value}</p>
+      <p className="text-[10px] text-neutral-500">{label}</p>
+      {note ? <p className="text-[10px] text-neutral-400">{note}</p> : null}
+    </div>
   );
 }
 

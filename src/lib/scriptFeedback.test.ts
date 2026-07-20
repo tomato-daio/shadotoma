@@ -231,6 +231,17 @@ describe('buildScriptFeedback', () => {
     expect(feedback[0].words![2]).toEqual({ text: 'on', highlight: 'miss', cardIndices: [0, 1] });
   });
 
+  it('issueのreferenceLinkedはカードへ伝搬する', () => {
+    const judge = makeJudge({
+      wordMarks: matchingMarks(),
+      issues: [{ type: 'linking', words: ['turned', 'on'], si: 0, referenceLinked: true }],
+    });
+    const feedback = buildScriptFeedback(SENTENCES, judge);
+    expect(feedback[0].cards).toEqual([
+      { kind: 'dev', type: 'linking', words: ['turned', 'on'], anchored: true, anchorPosition: 2, referenceLinked: true },
+    ]);
+  });
+
   it('語は実在するが隣接一致しないカードはanchored=falseになり、どの語にも紐づかない', () => {
     const judge = makeJudge({
       wordMarks: matchingMarks(),

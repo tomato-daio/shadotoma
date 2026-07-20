@@ -32,6 +32,11 @@ export interface FeedbackCard {
    * この語の直後に割り込み表示する（シャドテン風）。anchored=falseでは未設定。
    */
   anchorPosition?: number;
+  /**
+   * お手本音声で連結が確認できたペア（M15・PhenomenonIssue.referenceLinked）。
+   * devカードの文言を「お手本では繋げて発音しています」に強化する。
+   */
+  referenceLinked?: boolean;
 }
 
 export interface FeedbackWord {
@@ -134,10 +139,16 @@ export function buildScriptFeedback(sentences: Sentence[], judge?: JudgeResult):
     words: string[],
     highlightTarget: Set<string>,
     accept: (slice: WordMark[]) => boolean,
+    referenceLinked?: boolean,
   ): void => {
     const list = cardsBySentence.get(si) ?? [];
     const cardIndex = list.length;
     const positions = findMatchPositions(marksBySentence.get(si), words, accept);
+    const card: FeedbackCard =
+      positions.length > 0
+        ? { kind, type, words, anchored: true, anchorPosition: Math.max(...positions) }
+        : { kind, type, words, anchored: false };
+    if (referenceLinked) card.referenceLinked = true;
     for (const k of positions) {
       const key = `${si}:${k}`;
       highlightTarget.add(key);
@@ -145,19 +156,21 @@ export function buildScriptFeedback(sentences: Sentence[], judge?: JudgeResult):
       indices.push(cardIndex);
       cardIndicesByPosition.set(key, indices);
     }
-    if (positions.length > 0) {
-      list.push({ kind, type, words, anchored: true, anchorPosition: Math.max(...positions) });
-    } else {
-      list.push({ kind, type, words, anchored: false });
-    }
+    list.push(card);
     cardsBySentence.set(si, list);
   };
 
   // 今回の指摘（Developmentカード + 対象箇所のピンク。ペアはok側のメンバーも含めて塗る）
   for (const issue of judge.issues ?? []) {
     if (!wordsExistIn(issue.si, issue.words)) continue;
-    addCard(issue.si, 'dev', issue.type, issue.words, missPositions, (slice) =>
-      slice.some((m) => m.status !== 'ok'),
+    addCard(
+      issue.si,
+      'dev',
+      issue.type,
+      issue.words,
+      missPositions,
+      (slice) => slice.some((m) => m.status !== 'ok'),
+      issue.referenceLinked,
     );
   }
 
