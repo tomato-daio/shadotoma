@@ -9,16 +9,19 @@ import {
   getMaterialsByArticleId,
   getQuizResultsByArticle,
   getRecentQuizResults,
+  getReferenceAnalysis,
   getSubmissionsByMaterial,
   markMaterialProgressDone,
   newId,
   putMaterial,
   putMaterialProgress,
+  putReferenceAnalysis,
   resetDBForTest,
   syncBundledMaterials,
   touchMaterialProgress,
   type Material,
   type QuizResult,
+  type ReferenceAnalysisRecord,
   type Submission,
 } from './db';
 
@@ -271,6 +274,32 @@ describe('syncBundledMaterials', () => {
     const all = await getAllMaterials();
     expect(all.map((m) => m.id)).toEqual([local.id]);
     expect(await getMaterial(local.id)).toBeDefined();
+  });
+
+  it('indexから消えたbundled教材のreferenceAnalysisキャッシュは一緒に削除し、残る教材のものは維持する', async () => {
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p1' }));
+    await putMaterial(makeBundledMaterial({ id: 'voa-1000-p2', part: 2 }));
+    const record = (materialId: string): ReferenceAnalysisRecord => ({
+      materialId,
+      modelKey: 'high',
+      analyzedAt: 1,
+      pcmDurationSec: 45,
+      profile: { speechSpanSec: 40, pauses: [], pitch: null },
+    });
+    await putReferenceAnalysis(record('voa-1000-p1'));
+    await putReferenceAnalysis(record('voa-1000-p2'));
+
+    // p2がindexから消えた（記事の再分割で音声が差し替わったケース）
+    const indexData = [makeBundledMaterial({ id: 'voa-1000-p1' })];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(indexData), { status: 200 })),
+    );
+
+    await syncBundledMaterials('/');
+
+    expect(await getReferenceAnalysis('voa-1000-p2')).toBeUndefined();
+    expect(await getReferenceAnalysis('voa-1000-p1')).toBeDefined();
   });
 
   it('indexから消えて削除された教材でもmaterialProgressは残る', async () => {

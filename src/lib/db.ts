@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { PhenomenonIssue, PreviousIssueOutcome } from './phenomena';
+import type { ReferenceComparison, SpeechProfile } from './referenceComparison';
 import { mergeSentenceAnnotations } from './scriptAnnotations';
 
 export type PracticeStep = 'listening' | 'script' | 'overlapping' | 'shadowing';
@@ -140,6 +141,32 @@ export interface JudgeResult {
   azure?: AzurePronunciationResult;
   /** azure採点が失敗した場合の一行エラーメッセージ（表示用。成功時・未実行時はundefined）。 */
   azureError?: string;
+  /**
+   * お手本音声との比較（M15・DESIGN.md §8f）。お手本解析が未実行・失敗の場合と
+   * 旧データではundefined（後方互換。表示側は比較セクションを出さない）。
+   */
+  referenceComparison?: ReferenceComparison;
+}
+
+// store: referenceAnalysis（お手本音声の解析キャッシュ。M15・DESIGN.md §8f）
+// 教材×Whisperモデルごとに1回だけ解析し、以降の提出で再利用する。音声Blobは持たない（数KB/教材）。
+// bundled教材がindexから消えたときはsyncBundledMaterialsが一緒に削除する（純キャッシュのため）。
+export interface ReferenceAnalysisRecord {
+  materialId: string; // keyPath
+  /**
+   * 解析に使ったWhisperモデルキー（'high'|'fast'）。選択モデルと不一致なら再解析する。
+   * WhisperModelKey型はfeatures側にあり循環importになるためstringで持つ。
+   */
+  modelKey: string;
+  analyzedAt: number; // epoch ms
+  /** 解析したお手本PCMの長さ(秒)。タイムスタンプ品質ゲートの入力に使う。 */
+  pcmDurationSec: number;
+  /** DSPプロファイル（速度・間・抑揚。①）。無音等で作れなければnull。 */
+  profile: SpeechProfile | null;
+  /** お手本のWhisper transcript。 */
+  transcript?: string;
+  /** 品質ゲート（validateTimedWords）通過済みの単語タイムスタンプ（②）。縮退時はundefined。 */
+  words?: { word: string; startSec: number; endSec: number }[];
 }
 
 // store: submissions（提出=録音+添削結果）
@@ -216,6 +243,10 @@ interface ShadotomaDBSchema extends DBSchema {
     value: QuizResult;
     indexes: { 'by-article': string };
   };
+  referenceAnalysis: {
+    key: string;
+    value: ReferenceAnalysisRecord;
+  };
 }
 
 const DB_NAME = 'shadotoma';
@@ -223,7 +254,8 @@ const DB_NAME = 'shadotoma';
 // 触らないため、v1で作成済みのユーザーデータもそのまま残る。
 // v2→v3: 「バージョンだけ2に上がりquizResults未作成」の壊れたDB（更新途中のタブ多重等で発生しうる）を
 // 自己修復するための再実行。upgradeは全ストア冪等なので何度走っても安全。
-const DB_VERSION = 3;
+// v3→v4（M15）: referenceAnalysis ストア（お手本音声の解析キャッシュ）を追加（DESIGN.md §8f）。
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase<ShadotomaDBSchema>> | null = null;
 
@@ -260,6 +292,9 @@ export function getDB(): Promise<IDBPDatabase<ShadotomaDBSchema>> {
         if (!db.objectStoreNames.contains('quizResults')) {
           const store = db.createObjectStore('quizResults', { keyPath: 'id' });
           store.createIndex('by-article', 'articleId');
+        }
+        if (!db.objectStoreNames.contains('referenceAnalysis')) {
+          db.createObjectStore('referenceAnalysis', { keyPath: 'materialId' });
         }
       },
     });
@@ -456,6 +491,23 @@ export async function setAppState(key: string, value: AppStateValue): Promise<vo
 
 // ---- quizResults（DESIGN.md §8b M5） ----
 
+// ---- referenceAnalysis（お手本解析キャッシュ。M15）----
+
+export async function getReferenceAnalysis(materialId: string): Promise<ReferenceAnalysisRecord | undefined> {
+  const db = await getDB();
+  return db.get('referenceAnalysis', materialId);
+}
+
+export async function putReferenceAnalysis(record: ReferenceAnalysisRecord): Promise<void> {
+  const db = await getDB();
+  await db.put('referenceAnalysis', record);
+}
+
+export async function deleteReferenceAnalysis(materialId: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('referenceAnalysis', materialId);
+}
+
 export async function addQuizResult(result: QuizResult): Promise<void> {
   const db = await getDB();
   await db.put('quizResults', result);
@@ -521,20 +573,26 @@ export async function syncBundledMaterials(baseUrl: string): Promise<void> {
     const indexIds = new Set(validItems.map((item) => item.id));
 
     const db = await getDB();
-    const tx = db.transaction('materials', 'readwrite');
-    const existingBundled = await tx.store.index('by-source').getAllKeys('voa');
+    const tx = db.transaction(['materials', 'referenceAnalysis'], 'readwrite');
+    const materialsStore = tx.objectStore('materials');
+    const referenceStore = tx.objectStore('referenceAnalysis');
+    const existingBundled = await materialsStore.index('by-source').getAllKeys('voa');
     for (const item of validItems) {
       // 既存レコードへ後付けした訳・語彙(ja/vocab)を、indexからの丸ごと上書きで消さないよう引き継ぐ
       // （scriptAnnotations.tsのクリップボード往復取り込みで付与されたデータの保護）。
-      const existing = await tx.store.get(item.id);
+      const existing = await materialsStore.get(item.id);
       const merged = existing
         ? { ...item, sentences: mergeSentenceAnnotations(existing.sentences, item.sentences) }
         : item;
-      await tx.store.put(merged);
+      await materialsStore.put(merged);
     }
     for (const key of existingBundled) {
       if (!indexIds.has(key as string)) {
-        await tx.store.delete(key);
+        await materialsStore.delete(key);
+        // お手本解析キャッシュも一緒に削除する（M15: 記事の再分割で音声が差し替わったときに
+        // 陳腐化したタイミング・プロファイルを残さないため。submissionsは履歴として残す方針と異なり、
+        // これは再生成可能な純キャッシュなので消してよい）。
+        await referenceStore.delete(key as string);
       }
     }
     await tx.done;

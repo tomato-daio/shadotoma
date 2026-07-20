@@ -183,10 +183,12 @@ export async function importAllData(file: Blob): Promise<void> {
 
   const db = await getDB();
   const storeNames = ['materials', 'sessions', 'submissions', 'materialProgress', 'appState', 'quizResults'] as const;
-  const tx = db.transaction(storeNames, 'readwrite');
+  // referenceAnalysis（お手本解析キャッシュ。M15）はエクスポート対象外だが、復元後に別環境の
+  // 陳腐化キャッシュが残らないようclearだけ行う（必要になれば次回提出時に再解析される）。
+  const tx = db.transaction([...storeNames, 'referenceAnalysis'], 'readwrite');
   // 全ストアをclearする前に、既存のazureSpeechKeyを退避しておく（clear後に書き戻すため）。
   const preservedAzureKeyRecord = await tx.objectStore('appState').get(AZURE_SPEECH_KEY_STATE_KEY);
-  await Promise.all(storeNames.map((name) => tx.objectStore(name).clear()));
+  await Promise.all([...storeNames.map((name) => tx.objectStore(name).clear()), tx.objectStore('referenceAnalysis').clear()]);
   await Promise.all([
     ...materials.map((m) => tx.objectStore('materials').put(m)),
     ...data.sessions.map((s) => tx.objectStore('sessions').put(s)),
