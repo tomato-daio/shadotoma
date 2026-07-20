@@ -134,9 +134,8 @@ export function PracticePage() {
 
       const { transcript, judge } = await runJudge({
         audioBlob: blob,
-        sentences: material!.sentences,
+        material: material!,
         recordingDurationSec,
-        referenceDurationSec: material!.durationSec,
         previousMatchRate: prevMatchRate,
         previousIssues: previousJudge?.issues,
         onProgress: (event) => {

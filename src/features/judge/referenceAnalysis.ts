@@ -68,7 +68,9 @@ export async function ensureReferenceAnalysis(args: {
       (event) => {
         // timestampedモデルの初回DL進捗だけは転送する。transcribing通知は握りつぶし、
         // 外側の「お手本音声を解析中…」フェーズ表示を維持する。
-        if (event.phase === 'model-download') onProgress?.(event);
+        if (event.phase === 'model-download') {
+          onProgress?.({ phase: 'model-download', progress: event.progress });
+        }
       },
     );
 

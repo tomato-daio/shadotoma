@@ -17,6 +17,13 @@ import {
   type PhenomenonType,
   type PreviousIssueOutcome,
 } from './phenomena';
+import {
+  EXTRA_PAUSE_COUNT_DIFF,
+  PITCH_FLAT_RATIO,
+  PITCH_GOOD_RATIO,
+  PITCH_MIN_MEANINGFUL_SD,
+  type ReferenceComparison,
+} from './referenceComparison';
 
 export interface SentenceLike {
   en: string;
@@ -41,6 +48,11 @@ export interface FeedbackInput {
   issues?: PhenomenonIssue[];
   /** 前回提出issuesの改善判定（phenomena.comparePreviousIssues）。Good Pointの「前回指摘が改善」に使う。 */
   previousIssueOutcomes?: PreviousIssueOutcome[];
+  /**
+   * お手本音声との比較（M15・DESIGN.md §8f）。間(ポーズ)・抑揚のGood/Dev Pointに使う。
+   * お手本解析が未実行・失敗のときはundefined（比較コメントを出さない）。
+   */
+  referenceComparison?: ReferenceComparison;
 }
 
 export interface FeedbackResult {
@@ -351,6 +363,13 @@ function phenomenonCoreClause(issue: PhenomenonIssue): string {
 
 /** 同typeにまとめた指摘グループを1つのDevelopment Point文言にする（最大2ペアまで列挙）。 */
 function buildPhenomenonDevPoint(type: PhenomenonType, group: PhenomenonIssue[]): string {
+  const first = group[0];
+  // M15: お手本音声で連結が実際に確認できたペアは、「お手本ではこう発音している」根拠つきの文言にする
+  // （prioritizeIssuesがreferenceLinkedを優先するため、該当があればgroup先頭に来る）。
+  if (first.referenceLinked) {
+    const lead = `お手本では「${displayWords(first)}」を繋げて発音していますが、言えていませんでした。`;
+    return `${lead}${phenomenonCoreClause(first)}${phenomenonKatakanaSuffix(first)}。`;
+  }
   const names = group
     .slice(0, 2)
     .map((issue) => `「${displayWords(issue)}」`)
@@ -359,7 +378,6 @@ function buildPhenomenonDevPoint(type: PhenomenonType, group: PhenomenonIssue[])
     group.length >= 2
       ? `${names}のような${PHENOMENON_LABEL[type]}が言えていませんでした。`
       : `${names}の${PHENOMENON_LABEL[type]}が言えていませんでした。`;
-  const first = group[0];
   return `${lead}${phenomenonCoreClause(first)}${phenomenonKatakanaSuffix(first)}。`;
 }
 
@@ -426,6 +444,22 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
     }
   }
 
+  // M15: お手本音声との比較（間・抑揚）。referenceComparisonが無ければ何も出さない。
+  const rc = input.referenceComparison;
+  if (rc) {
+    if (rc.userPauseCount <= rc.referencePauseCount + 1 && matchRate >= 0.6) {
+      goodCandidates.push('お手本と同じようなリズムで、余分な間（ポーズ）を作らずに読み進められていました。');
+    }
+    if (
+      rc.userPitchSd !== undefined &&
+      rc.referencePitchSd !== undefined &&
+      rc.referencePitchSd >= PITCH_MIN_MEANINGFUL_SD &&
+      rc.userPitchSd >= rc.referencePitchSd * PITCH_GOOD_RATIO
+    ) {
+      goodCandidates.push('お手本と同じくらい抑揚のある話し方ができていました。');
+    }
+  }
+
   if (matchRate >= 0.85) {
     goodCandidates.push(`スクリプト全体の一致率が${matchRatePercent}%と高く、全体的によく聞き取れる発話でした。`);
   } else if (matchRate >= 0.6) {
@@ -461,12 +495,35 @@ export function generateFeedback(input: FeedbackInput): FeedbackResult {
   if (referenceWpm !== undefined && referenceWpm > 0) {
     const ratio = wpm / referenceWpm;
     if (ratio < 1 - WPM_TOLERANCE_RATIO) {
+      // M15: 「1.2倍ゆっくり」のような倍率表現にする（WPMだけより差が直感的に伝わるため）。
+      const factor = (referenceWpm / Math.max(wpm, 1)).toFixed(1);
       devCandidates.push(
-        `お手本（${Math.round(referenceWpm)} WPM）よりゆっくりめの${Math.round(wpm)} WPMでした。テンポを上げる練習をしてみましょう。`,
+        `お手本の約${factor}倍ゆっくり（あなた${Math.round(wpm)} WPM / お手本${Math.round(referenceWpm)} WPM）でした。まずは正確さ優先でOKですが、次はお手本のリズムに乗ってみましょう。`,
       );
     } else if (ratio > 1 + WPM_TOLERANCE_RATIO) {
+      const factor = (wpm / referenceWpm).toFixed(1);
       devCandidates.push(
-        `お手本（${Math.round(referenceWpm)} WPM）より速い${Math.round(wpm)} WPMでした。焦らず、正確さを優先してみましょう。`,
+        `お手本の約${factor}倍速い${Math.round(wpm)} WPM（お手本${Math.round(referenceWpm)} WPM）でした。焦らず、お手本の間の取り方まで真似てみましょう。`,
+      );
+    }
+  }
+
+  // M15: お手本に無い余分な間（ポーズ）と、抑揚の平坦さの指摘。
+  if (rc) {
+    if (rc.userPauseCount >= rc.referencePauseCount + EXTRA_PAUSE_COUNT_DIFF) {
+      const extra = rc.userPauseCount - rc.referencePauseCount;
+      devCandidates.push(
+        `お手本に無い間（ポーズ）が${extra}箇所ほどありました。つっかえた箇所を確認して、文の切れ目以外では止まらずに言える練習をしてみましょう。`,
+      );
+    }
+    if (
+      rc.userPitchSd !== undefined &&
+      rc.referencePitchSd !== undefined &&
+      rc.referencePitchSd >= PITCH_MIN_MEANINGFUL_SD &&
+      rc.userPitchSd < rc.referencePitchSd * PITCH_FLAT_RATIO
+    ) {
+      devCandidates.push(
+        'お手本より平坦な話し方になっています。強調される語で声の高さが動く箇所を、お手本を真似して大きめに付けてみましょう。',
       );
     }
   }

@@ -138,7 +138,9 @@ describe('generateFeedback', () => {
       wpm: 60,
       referenceWpm: 100,
     });
-    expect(devPoints.some((p) => p.includes('ゆっくりめ'))).toBe(true);
+    expect(devPoints.some((p) => p.includes('ゆっくり'))).toBe(true);
+    // M15: 倍率表現（100/60 ≒ 1.7倍）で伝える
+    expect(devPoints.some((p) => p.includes('約1.7倍'))).toBe(true);
   });
 
   it('お手本より速い速度をDevelopment Pointで指摘する', () => {
@@ -161,6 +163,83 @@ describe('generateFeedback', () => {
       referenceWpm: 100,
     });
     expect(goodPoints.some((p) => p.includes('近く'))).toBe(true);
+  });
+
+  it('お手本に無い余分な間（ポーズ）をDevelopment Pointで指摘する', () => {
+    const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+    const { devPoints } = generateFeedback({
+      wordMarks,
+      sentences: SENTENCES,
+      wpm: 100,
+      referenceComparison: {
+        speedRatio: 1,
+        userWpm: 100,
+        referenceWpm: 100,
+        userPauseCount: 4,
+        referencePauseCount: 1,
+        userLongestPauseSec: 1.2,
+        referenceLongestPauseSec: 0.4,
+      },
+    });
+    expect(devPoints.some((p) => p.includes('お手本に無い間'))).toBe(true);
+  });
+
+  it('お手本より平坦な抑揚を指摘する（お手本自体に抑揚があるときのみ）', () => {
+    const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+    const base = {
+      speedRatio: 1,
+      userWpm: 100,
+      referenceWpm: 100,
+      userPauseCount: 0,
+      referencePauseCount: 0,
+      userLongestPauseSec: 0,
+      referenceLongestPauseSec: 0,
+    };
+    const flat = generateFeedback({
+      wordMarks,
+      sentences: SENTENCES,
+      wpm: 100,
+      referenceComparison: { ...base, userPitchSd: 1.0, referencePitchSd: 2.5 },
+    });
+    expect(flat.devPoints.some((p) => p.includes('平坦'))).toBe(true);
+
+    // お手本自体が平坦（SD < 1.5）なら抑揚コメントをしない
+    const referenceItselfFlat = generateFeedback({
+      wordMarks,
+      sentences: SENTENCES,
+      wpm: 100,
+      referenceComparison: { ...base, userPitchSd: 0.4, referencePitchSd: 1.0 },
+    });
+    expect(referenceItselfFlat.devPoints.some((p) => p.includes('平坦'))).toBe(false);
+  });
+
+  it('間・抑揚がお手本並みならGood Pointで評価する', () => {
+    const wordMarks = buildWordMarks(0, ['a', 'b', 'c', 'd'], ['ok', 'ok', 'ok', 'ok']);
+    const { goodPoints } = generateFeedback({
+      wordMarks,
+      sentences: SENTENCES,
+      wpm: 100,
+      referenceComparison: {
+        speedRatio: 1,
+        userWpm: 100,
+        referenceWpm: 100,
+        userPauseCount: 1,
+        referencePauseCount: 1,
+        userLongestPauseSec: 0.4,
+        referenceLongestPauseSec: 0.4,
+        userPitchSd: 2.2,
+        referencePitchSd: 2.5,
+      },
+    });
+    expect(goodPoints.some((p) => p.includes('余分な間'))).toBe(true);
+    expect(goodPoints.some((p) => p.includes('抑揚のある話し方'))).toBe(true);
+  });
+
+  it('お手本で連結が確認できたペアは「お手本では〜を繋げて発音しています」文言になる', () => {
+    const wordMarks = buildWordMarks(0, ['They', 'turned', 'on', 'the'], ['ok', 'missed', 'ok', 'ok']);
+    const issues: PhenomenonIssue[] = [{ type: 'linking', words: ['turned', 'on'], si: 0, referenceLinked: true }];
+    const { devPoints } = generateFeedback({ wordMarks, sentences: SENTENCES, wpm: 100, issues });
+    expect(devPoints.some((p) => p.includes('お手本では「turned on」を繋げて発音しています'))).toBe(true);
   });
 
   it('最長連続一致区間をGood Pointで言及する', () => {
