@@ -58,6 +58,9 @@ interface Material {
   partCount?: number;         // 記事内の総セクション数
 }
 
+// store: referenceAnalysis（お手本音声の解析キャッシュ。M15・§8f。keyPath: materialId, DB v4で追加）
+// { materialId, modelKey, analyzedAt, pcmDurationSec, profile(DSP), transcript?, words?(タイムスタンプ) }
+
 // store: sessions（練習1回=1レコード。回数カウントの元データ）
 interface PracticeSession {
   id: string;
@@ -256,6 +259,25 @@ interface MaterialProgress {
 - できなかった語（wordMarksのmissed/sub、issuesの対象語）=ピンク地、improved=trueの前回指摘の語=青緑地。「🔥 Development」（issues）/「✓ Good」（improved）カードは常時表示せず、**点線下線付きのハイライト語をタップしたときに該当箇所（アンカー語）の直後へ割り込み表示する**（シャドテン風。`FeedbackCard.anchorPosition`。再タップ・カードタップで閉じる）。タップアンカーが無いカード（語数不一致フォールバック時・位置マッチ0件の旧データ）のみ常時表示にフォールバック（`FeedbackCard.anchored`）
 - `PreviousIssueOutcome` はsiを持たないため、対象語が全てokで存在する文を逆引きする（comparePreviousIssuesと同じヒューリスティック）
 - スクリプト総語数とwordMarks長が不一致（教材差し替え等）ならハイライトを諦めプレーン表示にフォールバック（phenomena.tsのpositionsReliableと同じ安全側）
+
+## 8f. お手本音声との比較（M15）
+
+シャドーイングの本質は「お手本の音の再現」のため、録音単体の採点に加えて**お手本音声との差**をコメントする。無料・端末内完結。すべての段階で静かに縮退する（お手本解析失敗→比較なし=従来動作。判定本体は壊さない）。
+
+**a. お手本解析（`features/judge/referenceAnalysis.ts`・教材ごと初回のみ）**
+- お手本mp3をデコードし、(1)DSPプロファイル（発話区間長・間(≥0.35s)の列・F0統計）と (2)単語タイムスタンプ付きWhisper文字起こしを取得
+- word timestampsは **`onnx-community/whisper-{base,tiny}.en_timestamped`**（cross-attention出力付きの別エクスポート。追加DL・初回のみ）+ `return_timestamps:'word'` + **`chunk_length_s:28`**（transformers.js issue #1358: 30秒境界でタイムスタンプ破損の回避）。失敗時はワーカー内でtimestampsなしに1回再試行
+- 結果は新store **`referenceAnalysis`**（keyPath: materialId、DB v4）へキャッシュ。modelKey不一致で再解析。bundled教材がindexから消えたらsyncが一緒に削除。バックアップはエクスポート対象外・インポート時clearのみ（再生成可能な純キャッシュ）
+- タイムスタンプは品質ゲート`validateTimedWords`（カバレッジ80%・単調性・範囲チェック）を通過したものだけ保存。SelfTestはtimestampedモデルで実行し取得率と合否を表示する（実機検証用）
+
+**b. 速度・間・抑揚の比較（`lib/referenceComparison.ts`・`lib/pitch.ts`）**
+- referenceWpmを**お手本の発話区間ベース**に統一（従来は無音込み全尺で録音側と非対称だった。解析なし時は従来ベースへ縮退）
+- 速度は倍率表現（「お手本の約1.2倍ゆっくり」）、間は「お手本に無い間が◯箇所」、抑揚はF0半音SDの比（お手本SD≥1.5のときのみ判定）でGood/Dev Pointに追加。判定結果画面に「お手本との比較」カード（速さ/間/抑揚の3タイル）を表示。`JudgeResult.referenceComparison`（optional）に保存
+- F0抽出は正規化自己相関（フレーム40ms/ホップ20ms、オクターブ誤りは「最初のピーク群の局所最大」で回避）。絶対精度より「両者に同じバイアス」を優先した素朴な実装
+
+**c. 連結実現の確認（`lib/linkingRealization.ts`）**
+- お手本transcriptをスクリプトへアライン（`WordMark.ri`で単語タイミングと対応）し、音声現象のペア指摘（linking/flap2語/elision）について「お手本では2語間ギャップ≤0.09秒＝連結して発音」を確認 → `PhenomenonIssue.referenceLinked` を付与
+- 該当ペアのDev Point・練習画面カードは「お手本では『turned on』を繋げて発音しています」の根拠つき文言になる。`prioritizeIssues`は同点時にreferenceLinkedを優先
 
 ## 9. ディレクトリ構成
 
